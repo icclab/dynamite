@@ -1,7 +1,6 @@
 __author__ = 'brnr'
 
 import os
-
 import yaml
 
 

@@ -24,13 +24,13 @@ class PyTest(Command):
 
 setup(
     name='dynamite',
+    description='Autoscaling Tool for CoreOS',
     version='0.0.0.dev1',
     packages=['dynamite', 'dynamite.INIT', 'dynamite.tests', 'dynamite.tests.INIT', 'dynamite.GENERAL'],
     url='https://github.com/sandorkan/dynamite',
     license='Apache License 2.0',
     author='brnr',
     author_email='brnr@zhaw.ch',
-    description='Autoscaling Tool for CoreOS',
     install_requires=reqs,
     tests_require=['pytest'],
     cmdclass={'test': PyTest},
