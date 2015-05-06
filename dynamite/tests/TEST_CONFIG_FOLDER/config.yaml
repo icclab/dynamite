@@ -1,0 +1,60 @@
+---
+Dynamite:
+  ServiceFiles:
+    PathList: 
+      - C:\Users\brnr\PycharmProjects\dynamite\dynamite\tests\TEST_CONFIG_FOLDER\service-files
+  FleetAPIEndpoint:
+    IP: 172.17.8.101
+    Port: 49153
+  Service:
+    apache:
+      name_of_unit_file: apache@.service
+      unit_is_template: true
+      etcd_path: /services/apache/scaling_rules
+      min_instance: 2
+      max_instance: 5
+      base_instance_prefix_number: 8080
+      service_announcer: zurmo_apache_discovery
+      service_dependency:
+        - zurmo_application
+        - zurmo_config
+      scale_up_policy:
+        ScalingPolicy: scale_up
+      scale_down_policy:
+        ScalingPolicy: scale_down
+    haproxy:
+      name_of_unit_file: haproxy.service
+      unit_is_template: false
+      etcd_path: /services/haproxy/scaling_rules
+      min_instance: 1
+      max_instance: 1
+      base_instance_prefix_number: 80
+      service_announcer: zurmo_haproxy_discovery
+#      service_dependency:
+#        - zurmo_application
+#        - zurmo_config
+#      scale_up_policy:
+#        ScalingPolicy: scale_up
+#      scale_down_policy:
+#        ScalingPolicy: scale_down
+  ScalingPolicy:
+    scale_up:
+      metric: 
+        service: zurmo_haproxy
+        name: response_time
+      comparative_operator: gt
+      threshold: 250
+      treshold_unit: micro_second
+      period: 15
+      period_unit: second
+      cooldown_period: 1
+      cooldown_period_unit: minute
+    scale_down:
+      metric: cpu_load
+      comparative_operator: lt
+      threshold: 30
+      threshold_unit: percent
+      period: 30
+      period_unit: second
+      cooldown_period: 1
+      cooldown_period_unit: minute
