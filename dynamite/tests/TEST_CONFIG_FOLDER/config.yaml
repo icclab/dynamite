@@ -4,8 +4,12 @@ Dynamite:
     PathList: 
       - C:\Users\brnr\PycharmProjects\dynamite\dynamite\tests\TEST_CONFIG_FOLDER\service-files
   FleetAPIEndpoint:
-    IP: 172.17.8.101
-    Port: 49153
+    ip: 172.17.8.101
+    port: 49153
+  ETCD:
+    ip_api_endpoint: 127.0.0.1
+    port_api_endpoint: 4001
+    application_base_path: /services
   Service:
     apache:
       name_of_unit_file: apache@.service
@@ -39,9 +43,8 @@ Dynamite:
 #        ScalingPolicy: scale_down
   ScalingPolicy:
     scale_up:
-      metric: 
-        service: zurmo_haproxy
-        name: response_time
+      service: haproxy
+      metric: response_time
       comparative_operator: gt
       threshold: 250
       treshold_unit: micro_second
@@ -50,6 +53,7 @@ Dynamite:
       cooldown_period: 1
       cooldown_period_unit: minute
     scale_down:
+      service: apache
       metric: cpu_load
       comparative_operator: lt
       threshold: 30

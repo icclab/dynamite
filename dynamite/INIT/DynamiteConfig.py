@@ -10,6 +10,7 @@ class DynamiteConfig(object):
     # Instance Variables
     ServiceFiles = None
     FleetAPIEndpoint = None
+    ETCD = None
     Service = None
     ScalingPolicy = None
 
@@ -45,18 +46,38 @@ class DynamiteConfig(object):
 
     class FleetAPIEndpointStruct(object):
         # Instance Variables
-        IP = None
-        Port = None
+        ip = None
+        port = None
 
         def __init__(self, IP, Port):
-            self.IP = IP
-            self.Port = Port
+            self.ip = IP
+            self.port = Port
 
         def __str__(self):
             return "FleetAPIEndpoint Struct:\n" \
                    "\t<Instance Variables>\n" \
                    "\t\t<IP,\ttype: String>\n" \
                     "\t\t<Port,\ttype: Int>"
+
+    class ETCDStruct(object):
+        # Instance Variables
+        ip_api_endpoint = None
+        port_api_endpoint = None
+        application_base_path = None
+
+        def __init__(self, ip_api_endpoint, port_api_endpoint, application_base_path):
+            self.ip_api_endpoint = ip_api_endpoint
+            self.port_api_endpoint = port_api_endpoint
+            self.application_base_path = application_base_path
+
+        def __str__(self):
+            return_string = "ETCD Struct:\n" \
+                            "\t<Instance Variables>\n"
+
+            for (instance_variable_name, value) in self.__dict__.items():
+                return_string += "\t\tName: " + instance_variable_name + ", Type: " + str(type(value)) + "\n"
+
+            return return_string
 
     class ServiceStruct(object):
 
@@ -115,6 +136,7 @@ class DynamiteConfig(object):
         class ScalingPolicyDetailStruct(object):
             # Instance Variables
             name = None
+            service = None
             metric = None
             comparative_operator = None
             threshold = None
@@ -126,6 +148,7 @@ class DynamiteConfig(object):
 
             def __init__(self, name, scaling_policy_detail_dict):
                     self.name = name
+                    self.service = scaling_policy_detail_dict['service'] if 'service' in scaling_policy_detail_dict else None
                     self.metric = scaling_policy_detail_dict['metric'] if 'metric' in scaling_policy_detail_dict else None
                     self.comparative_operator = scaling_policy_detail_dict['comparative_operator'] if 'comparative_operator' in scaling_policy_detail_dict else None
                     self.threshold = scaling_policy_detail_dict['threshold'] if 'threshold' in scaling_policy_detail_dict else None
@@ -184,9 +207,14 @@ class DynamiteConfig(object):
 
             self.ServiceFiles.PathList = list(path_set_a)+list(path_set_b-path_set_a)
 
-        IP = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['IP']
-        Port = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['Port']
+        IP = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['ip']
+        Port = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['port']
         self.FleetAPIEndpoint = DynamiteConfig.FleetAPIEndpointStruct(IP,Port)
+
+        etcd_ip_api_endpoint = self.dynamite_yaml_config['Dynamite']['ETCD']['ip_api_endpoint']
+        etcd_port_api_endpoint = self.dynamite_yaml_config['Dynamite']['ETCD']['port_api_endpoint']
+        etcd_application_base_path = self.dynamite_yaml_config['Dynamite']['ETCD']['application_base_path']
+        self.ETCD = DynamiteConfig.ETCDStruct(etcd_ip_api_endpoint, etcd_port_api_endpoint, etcd_application_base_path)
 
         ServicesDict = self.dynamite_yaml_config['Dynamite']['Service']
         self.Service = DynamiteConfig.ServiceStruct(ServicesDict)
@@ -211,14 +239,13 @@ class DynamiteConfig(object):
 if __name__ == "__main__":
 
     path_to_config_file = "..\\tests\\TEST_CONFIG_FOLDER\\config.yaml"
+    service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files']
 
     with open(path_to_config_file, "r") as dynamite_yaml_config_file:
         dynamite_yaml_config_dict = yaml.load(dynamite_yaml_config_file)
 
-    dynamite_config = DynamiteConfig(dynamite_yaml_config_dict)
+    dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
 
-    #print(dynamite_config.UnitFiles)
+    print(dynamite_config.ETCD.ip_api_endpoint)
     #print(dynamite_config.FleetAPIEndpoint)
     #print(dynamite_config.Service)
-    if not isinstance(dynamite_config, DynamiteConfig):
-        print("Hooray for boobies!")

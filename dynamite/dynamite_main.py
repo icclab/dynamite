@@ -91,5 +91,4 @@ if __name__ == '__main__':
     dynamite_config = DynamiteConfig(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER)
 
     #dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
-
-    print(dynamite_config.ServiceFiles.PathList)
+    #print(dynamite_config.ServiceFiles.PathList)
