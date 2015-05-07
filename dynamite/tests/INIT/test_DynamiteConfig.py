@@ -15,9 +15,9 @@ from dynamite.INIT.DynamiteConfig import DynamiteConfig
 def path_to_tmp_dynamite_config_file(request):
 
     name_of_tmp_config_file = "tmp_test_dynamite_config.yaml"
-    #path_to_tmp_config_file = "tests/INIT"
+    path_to_tmp_config_file = "tests/INIT"
 
-    #tmp_config_file = os.path.join(path_to_tmp_config_file, name_of_tmp_config_file)
+    tmp_config_file = os.path.join(path_to_tmp_config_file, name_of_tmp_config_file)
 
     dynamite_yaml_test_config_dict = {'Dynamite': {
       'ServiceFiles': {
@@ -85,21 +85,19 @@ def path_to_tmp_dynamite_config_file(request):
 
     dynamite_config_yaml = yaml.dump(dynamite_yaml_test_config_dict)
 
-    #with open(tmp_config_file, "w") as tmp_yaml_config_file:
-    with open(name_of_tmp_config_file, "w") as tmp_yaml_config_file:
+    with open(tmp_config_file, "w") as tmp_yaml_config_file:
             tmp_yaml_config_file.write(dynamite_config_yaml)
 
     @request.addfinalizer
     def teardown():
         tmp_yaml_config_file.close()
-        #os.remove(tmp_config_file)
-        #os.remove(name_of_tmp_config_file)
+        os.remove(tmp_config_file)
+
 
     cwd = os.path.abspath(os.path.dirname(__file__))
     path_to_tmp_config = os.path.join(cwd,name_of_tmp_config_file)
 
-    return name_of_tmp_config_file
-    #return path_to_tmp_config
+    return path_to_tmp_config
 
 
 def test_create_dynamiteConfig_object_with_arg_config_path_argument(path_to_tmp_dynamite_config_file):
