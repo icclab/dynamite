@@ -15,7 +15,7 @@ from dynamite.INIT.DynamiteConfig import DynamiteConfig
 def path_to_tmp_dynamite_config_file(request):
 
     name_of_tmp_config_file = "tmp_test_dynamite_config.yaml"
-    path_to_tmp_config_file = "tests/INIT"
+    path_to_tmp_config_file = "tests\\INIT"
 
     tmp_config_file = os.path.join(path_to_tmp_config_file, name_of_tmp_config_file)
 
