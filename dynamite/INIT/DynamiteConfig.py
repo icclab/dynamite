@@ -86,7 +86,6 @@ class DynamiteConfig(object):
             name = None
             name_of_unit_file = None
             unit_is_template = None
-            etcd_path = None
             min_instance = None
             max_instance = None
             base_instance_prefix_number = None
@@ -99,7 +98,6 @@ class DynamiteConfig(object):
                 self.name = name
                 self.name_of_unit_file = service_detail_dict['name_of_unit_file'] if 'name_of_unit_file' in service_detail_dict else None
                 self.unit_is_template = service_detail_dict['unit_is_template'] if 'unit_is_template' in service_detail_dict else None
-                self.etcd_path = service_detail_dict['etcd_path'] if 'etcd_path' in service_detail_dict else None
                 self.min_instance = service_detail_dict['min_instance'] if 'min_instance' in service_detail_dict else None
                 self.max_instance = service_detail_dict['max_instance'] if 'max_instance' in service_detail_dict else None
                 self.base_instance_prefix_number = service_detail_dict['base_instance_prefix_number'] if 'base_instance_prefix_number' in service_detail_dict else None
