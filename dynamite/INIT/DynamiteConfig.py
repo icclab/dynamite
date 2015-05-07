@@ -85,6 +85,7 @@ class DynamiteConfig(object):
             # Instance Variables
             name = None
             name_of_unit_file = None
+            type = None
             min_instance = None
             max_instance = None
             base_instance_prefix_number = None
@@ -96,6 +97,7 @@ class DynamiteConfig(object):
             def __init__(self, name, service_detail_dict):
                 self.name = name
                 self.name_of_unit_file = service_detail_dict['name_of_unit_file'] if 'name_of_unit_file' in service_detail_dict else None
+                self.type = service_detail_dict['type'] if 'type' in service_detail_dict else None
                 self.min_instance = service_detail_dict['min_instance'] if 'min_instance' in service_detail_dict else None
                 self.max_instance = service_detail_dict['max_instance'] if 'max_instance' in service_detail_dict else None
                 self.base_instance_prefix_number = service_detail_dict['base_instance_prefix_number'] if 'base_instance_prefix_number' in service_detail_dict else None
@@ -242,6 +244,7 @@ if __name__ == "__main__":
 
     dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
 
-    print(dynamite_config.ETCD.ip_api_endpoint)
+    print(dynamite_config.Service.haproxy.type)
+
     #print(dynamite_config.FleetAPIEndpoint)
     #print(dynamite_config.Service)
