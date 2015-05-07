@@ -13,7 +13,6 @@ Dynamite:
   Service:
     apache:
       name_of_unit_file: apache@.service
-      unit_is_template: true
       min_instance: 2
       max_instance: 5
       base_instance_prefix_number: 8080
@@ -27,7 +26,6 @@ Dynamite:
         ScalingPolicy: scale_down
     haproxy:
       name_of_unit_file: haproxy.service
-      unit_is_template: false
       min_instance: 1
       max_instance: 1
       base_instance_prefix_number: 80
