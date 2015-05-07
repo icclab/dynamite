@@ -113,17 +113,9 @@ def service_files_list_2_json_list(dynamite_config):
     return json_list
 
 
-        # print(os.path.abspath(list_of_files[0]))
-        # service_file_abs_path = os.path.join(service_file_folder, list_of_files[0])
-        # print(service_file_abs_path)
-
-
 if __name__ == '__main__':
+
     path_to_config_file = "..\\tests\\TEST_CONFIG_FOLDER\\config.yaml"
+    service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files']
 
-    with open(path_to_config_file, "r") as dynamite_yaml_config_file:
-        dynamite_yaml_config_dict = yaml.load(dynamite_yaml_config_file)
-
-    dynamite_config = DynamiteConfig(dynamite_yaml_config_dict)
-
-    service_files_list_2_json_list(dynamite_config)
+    dynamite_config = DynamiteConfig(path_to_config_file)

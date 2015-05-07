@@ -4,8 +4,6 @@ import os
 import yaml
 
 
-#from dynamite.INIT.DynamiteHelper import transform_dynamite_yaml_configuration_to_python_dict
-
 class DynamiteConfig(object):
     # Instance Variables
     ServiceFiles = None
@@ -14,9 +12,6 @@ class DynamiteConfig(object):
     Service = None
     ScalingPolicy = None
 
-    # config_file_name = "config.yaml"
-    # config_file_directory = None
-    # config_file_with_path = None
 
     class ServiceFilesStruct(object):
         # Instance Variables
@@ -187,9 +182,10 @@ class DynamiteConfig(object):
 
         return dynamite_yaml_config
 
-    # The expected <dynamite_yaml_config> file is a Python List Object
-    #def __init__(self, dynamite_yaml_config):
-    def __init__(self, arg_config_path, arg_service_folder):
+    # Arguments:    arg_config_path: Path to the Dynamite YAML config file
+    #               arg_service_folder (Optional):  List of paths containing service-files.
+    #                                               Can also/additionally be defined in the dynamite yaml configuration file
+    def __init__(self, arg_config_path, arg_service_folder_list=None):
 
         dynamite_yaml_config = self.load_config_file(arg_config_path)
 
@@ -199,11 +195,12 @@ class DynamiteConfig(object):
         self.ServiceFiles = DynamiteConfig.ServiceFilesStruct(PathList)
 
         # Combine the 2 lists containing paths to the service files
-        if self.ServiceFiles.PathList != arg_service_folder:
-            path_set_a = set(self.ServiceFiles.PathList)
-            path_set_b = set(arg_service_folder)
+        if arg_service_folder_list:
+            if self.ServiceFiles.PathList != arg_service_folder_list:
+                path_set_a = set(self.ServiceFiles.PathList)
+                path_set_b = set(arg_service_folder_list)
 
-            self.ServiceFiles.PathList = list(path_set_a)+list(path_set_b-path_set_a)
+                self.ServiceFiles.PathList = list(path_set_a)+list(path_set_b-path_set_a)
 
         IP = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['ip']
         Port = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['port']
@@ -221,30 +218,15 @@ class DynamiteConfig(object):
         self.ScalingPolicy = DynamiteConfig.ScalingPolicyStruct(ScalingPolicyDict)
 
 
-# def transform_dynamite_yaml_configuration_to_python_dict(path_to_config_file=os.getcwd()):
-#     if os.path.isdir(path_to_config_file):
-#             config_file_directory = path_to_config_file
-#             config_file_with_path = os.path.join(config_file_directory, "config.yaml")
-#     else:
-#         raise NotADirectoryError(path_to_config_file)
-#
-#     with open(config_file_with_path, "r") as config_yaml:
-#         dynamite_yaml_config = yaml.load(config_yaml)
-#
-#     return dynamite_yaml_config
-
-
 if __name__ == "__main__":
 
     path_to_config_file = "..\\tests\\TEST_CONFIG_FOLDER\\config.yaml"
     service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files']
 
-    with open(path_to_config_file, "r") as dynamite_yaml_config_file:
-        dynamite_yaml_config_dict = yaml.load(dynamite_yaml_config_file)
+    #dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
+    dynamite_config = DynamiteConfig(path_to_config_file)
 
-    dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
-
-    print(dynamite_config.Service.haproxy.type)
+    print(dynamite_config.ServiceFiles.PathList)
 
     #print(dynamite_config.FleetAPIEndpoint)
     #print(dynamite_config.Service)
