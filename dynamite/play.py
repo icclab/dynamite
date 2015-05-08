@@ -3,32 +3,35 @@ __author__ = 'brnr'
 import argparse
 import os
 import platform
+import yaml
 
-#raise FileNotFoundError("random message")
+import requests
 
-first_list = [1]
-second_list = [1,2,3]
-#
-# in_first = set(first_list)
-# in_second = set(second_list)
-#
-# print(type(in_first))
-#
-# in_second_but_not_in_first = in_second - in_first
-#
-# result = first_list + list(in_second_but_not_in_first)
-# print(result)  # Prints [1, 2, 2, 5, 9, 7]
-# print(type(result))
+from dynamite.INIT.DynamiteConfig import DynamiteConfig
+from dynamite.INIT.DynamiteServiceHandler import DynamiteServiceHandler
 
-#print(first_list + list(set(second_list) - set(first_list)))
+if __name__ == '__main__':
 
-a = set(['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files'])
-b = set(['C:\\Users\\brnr\\PycharmProjects\\dynamite', 'C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite', 'C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files'])
+    # cwd = os.path.abspath(os.path.dirname(__file__))
+    # print(cwd)
 
-print("A: ", a)
-print("B: ", b)
-print("A-B: ", a-b)
-print("B-A: ", b-a)
+    path_to_config_file = "tests\\TEST_CONFIG_FOLDER\\config.yaml"
+    service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files']
 
-print(list(a)+list(b-a))
+    dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
+    service_handler = DynamiteServiceHandler(dynamite_config)
 
+    example_service_json = service_handler.ServiceJSONObjectDict['example.service']
+
+    # curl http://127.0.0.1:49153/fleet/v1/units/example.service -H "Content-Type: application/json" -X PUT -d @example.service.json
+
+    headers = {'Content-Type': 'application/json'}
+    service_name = 'example.service'
+
+    # Successful Response-Code: 201
+    r = requests.put("http://127.0.0.1:49153/fleet/v1/units/" + service_name, headers=headers, data=example_service_json)
+
+    #print(r.headers)
+    #print(r.status_code)
+    # with open('tests\\TEST_CONFIG_FOLDER\\json-files\\example.service.json', 'w') as outfile:
+    #     outfile.write(example_service_json)

@@ -5,8 +5,6 @@ import argparse
 import os
 import platform
 
-import yaml
-
 
 # The following is only for usage of this application from the command-line
 # And only during development
@@ -18,7 +16,9 @@ if 'C:\\Users\\brnr\\PycharmProjects\\dynamite' not in sys.path:
     sys.path.append('C:\\Users\\brnr\\PycharmProjects\\dynamite')
 
 from dynamite.GENERAL.DynamiteHelper import DYNAMITE_ENVIRONMENT_STRUCT
+from dynamite.GENERAL.FleetHandler import FleetHandler
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
+from dynamite.INIT.DynamiteServiceHandler import DynamiteServiceHandler
 
 DYNAMITE_ENVIRONMENT = os.getenv('DYNAMITE_ENVIRONMENT', DYNAMITE_ENVIRONMENT_STRUCT.DEVELOPMENT)
 
@@ -90,5 +90,8 @@ if __name__ == '__main__':
     # Create DynamiteConfig object to interact with loaded Dynamite YAML Configuration
     dynamite_config = DynamiteConfig(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER)
 
-    #dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
-    #print(dynamite_config.ServiceFiles.PathList)
+    dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
+
+    # this should be called from within the DynamiteServiceHandler!
+    fleet = FleetHandler(dynamite_config.FleetAPIEndpoint.ip, str(dynamite_config.FleetAPIEndpoint.port))
+    fleet.submit('example.service', dynamite_service_handler.ServiceJSONObjectDict['example.service'])

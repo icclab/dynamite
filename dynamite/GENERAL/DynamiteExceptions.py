@@ -7,3 +7,6 @@ class IllegalArgumentError(ValueError):
 
 class ServiceFileNotFoundError(Exception):
     pass
+
+class DuplicateServiceFileError(Exception):
+    pass

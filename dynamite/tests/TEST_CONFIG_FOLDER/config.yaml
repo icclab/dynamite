@@ -4,13 +4,27 @@ Dynamite:
     PathList: 
       - C:\Users\brnr\PycharmProjects\dynamite\dynamite\tests\TEST_CONFIG_FOLDER\service-files
   FleetAPIEndpoint:
-    ip: 172.17.8.101
+    ip: 127.0.0.1
     port: 49153
   ETCD:
     ip_api_endpoint: 127.0.0.1
     port_api_endpoint: 4001
     application_base_path: /services
   Service:
+    example:
+      name_of_unit_file: example.service
+      type: test
+      min_instance: 1
+      max_instance: 1
+      base_instance_prefix_number: 9999
+      # service_announcer: zurmo_apache_discovery
+      # service_dependency:
+      #   - zurmo_application
+      #   - zurmo_config
+      # scale_up_policy:
+      #   ScalingPolicy: scale_up
+      # scale_down_policy:
+      #   ScalingPolicy: scale_down
     apache:
       name_of_unit_file: apache@.service
       type: webserver

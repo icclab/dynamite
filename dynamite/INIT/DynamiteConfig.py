@@ -187,6 +187,11 @@ class DynamiteConfig(object):
     #                                               Can also/additionally be defined in the dynamite yaml configuration file
     def __init__(self, arg_config_path, arg_service_folder_list=None):
 
+        if isinstance(arg_service_folder_list, str):
+            tmp_str = arg_service_folder_list
+            arg_service_folder_list = []
+            arg_service_folder_list.append(tmp_str)
+
         dynamite_yaml_config = self.load_config_file(arg_config_path)
 
         self.dynamite_yaml_config = dynamite_yaml_config
@@ -201,6 +206,11 @@ class DynamiteConfig(object):
                 path_set_b = set(arg_service_folder_list)
 
                 self.ServiceFiles.PathList = list(path_set_a)+list(path_set_b-path_set_a)
+
+        # check if Folders in ServiceFiles-->PathList exit
+        for folder in self.ServiceFiles.PathList:
+            if not os.path.isdir(folder):
+                raise NotADirectoryError("Error: " + folder + " is not a valid directory")
 
         IP = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['ip']
         Port = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['port']
@@ -221,12 +231,16 @@ class DynamiteConfig(object):
 if __name__ == "__main__":
 
     path_to_config_file = "..\\tests\\TEST_CONFIG_FOLDER\\config.yaml"
-    service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files']
+    #service_folder_list = 'path\\to\\nowhere'
+    service_folder_list = "..\\tests\\TEST_CONFIG_FOLDER"
 
-    #dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
-    dynamite_config = DynamiteConfig(path_to_config_file)
+    #service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files']
 
-    print(dynamite_config.ServiceFiles.PathList)
+    dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
+    #dynamite_config = DynamiteConfig(path_to_config_file)
+    #dynamite_config = DynamiteConfig("/it/is/just/wrong.yaml")
+
+    print(dynamite_config.Service.apache.service_dependency)
 
     #print(dynamite_config.FleetAPIEndpoint)
     #print(dynamite_config.Service)

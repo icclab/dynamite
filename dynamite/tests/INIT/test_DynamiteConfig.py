@@ -6,10 +6,6 @@ import os
 
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
 
-# @pytest.fixture(scope="module")
-# def path_list_to_service_files():
-#     path_list = []
-#     path_a =
 
 @pytest.fixture(scope="module")
 def path_to_tmp_dynamite_config_file(request):
@@ -106,6 +102,14 @@ def test_create_dynamiteConfig_object_with_arg_config_path_argument(path_to_tmp_
     dynamite_config = DynamiteConfig(arg_config_path)
     assert dynamite_config
 
+
+def test_create_dynamiteConfig_with_incorrect_arg_config_path_argument():
+    arg_config_path = "/just/plain/wrong.yaml"
+
+    with pytest.raises(FileNotFoundError):
+        dynamite_config = DynamiteConfig(arg_config_path)
+
+
 def test_create_dynamiteConfig_object_with_arg_config_path_and_arg_service_folder_list_argument(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
     arg_service_folder_list = ['tests\\TEST_CONFIG_FOLDER\\service-files']
@@ -120,11 +124,103 @@ def test_create_dynamiteConfig_object_with_arg_config_path_and_arg_service_folde
     assert 'C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
 
 
+def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_same_value_as_in_config(path_to_tmp_dynamite_config_file):
+    arg_config_path = path_to_tmp_dynamite_config_file
+    arg_service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files']
+
+    dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder_list)
+    assert dynamite_config
+
+    path_list = dynamite_config.ServiceFiles.PathList
+
+    assert len(path_list) == 1
+    assert 'C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
+
+
+def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_with_multiple_duplicate_values(path_to_tmp_dynamite_config_file):
+    arg_config_path = path_to_tmp_dynamite_config_file
+    arg_service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files', 'tests\\TEST_CONFIG_FOLDER\\service-files']
+
+    dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder_list)
+    assert dynamite_config
+
+    path_list = dynamite_config.ServiceFiles.PathList
+
+    assert len(path_list) == 2
+    assert 'tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
+    assert 'C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
+
+
+def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_containing_incorrect_value(path_to_tmp_dynamite_config_file):
+    arg_config_path = path_to_tmp_dynamite_config_file
+    arg_service_folder_list = ['path\\to\\nowhere']
+
+    with pytest.raises(NotADirectoryError):
+        dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder_list)
+
+
+def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_containing_incorrect_string_value(path_to_tmp_dynamite_config_file):
+    arg_config_path = path_to_tmp_dynamite_config_file
+    arg_service_folder_list = 'path\\to\\nowhere'
+
+    with pytest.raises(NotADirectoryError):
+        dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder_list)
+
+
+def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_containing_correct_string_value(path_to_tmp_dynamite_config_file):
+    arg_config_path = path_to_tmp_dynamite_config_file
+    arg_service_folder_list = 'tests\\TEST_CONFIG_FOLDER\\service-files'
+
+    dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder_list)
+
+    path_list = dynamite_config.ServiceFiles.PathList
+
+    assert len(path_list) == 2
+    assert 'tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
+    assert 'C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
+
+
+def test_correct_values_in_dynamiteConfig_object_after_creation(path_to_tmp_dynamite_config_file):
+    arg_config_path = path_to_tmp_dynamite_config_file
+    arg_service_folder_list = 'tests\\TEST_CONFIG_FOLDER\\service-files'
+
+    dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder_list)
+
+    service_files = dynamite_config.ServiceFiles
+    assert len(service_files.PathList) == 2
+    assert 'tests\\TEST_CONFIG_FOLDER\\service-files' in service_files.PathList
+    assert 'C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files' in service_files.PathList
+
+    fleet_api_endpoint = dynamite_config.FleetAPIEndpoint
+    assert fleet_api_endpoint.ip == "172.17.8.101"
+    assert fleet_api_endpoint.port == 49153
+
+    etcd = dynamite_config.ETCD
+    assert etcd.application_base_path == '/services'
+
+    service = dynamite_config.Service
+    assert service.apache is not None
+    assert service.haproxy is not None
+    assert service.apache.type == 'webserver'
+    assert 'zurmo_application' in service.apache.service_dependency
+    assert 'zurmo_config' in service.apache.service_dependency
+    assert service.haproxy.service_dependency is None
+    assert service.haproxy.scale_up_policy is None
+
+    scaling_policy = dynamite_config.ScalingPolicy
+    assert scaling_policy.scale_up is not None
+    assert scaling_policy.scale_down is not None
+    assert scaling_policy.scale_up.metric == 'response_time'
+    assert scaling_policy.scale_up.threshold == 250
+    assert scaling_policy.scale_down.service == 'apache'
+    assert scaling_policy.scale_down.cooldown_period_unit == 'minute'
+
+
 # if __name__ == '__main__':
 #     pass
 #
-    # print(type(dynamite_config_yaml))
-    # print(type(x))
-    # print(x['Dynamite'])
-    # print(x['Dynamite']['FleetAPIEndpoint'])
-    # print(x['Dynamite']['FleetAPIEndpoint']['IP'])
+#     print(type(dynamite_config_yaml))
+#     print(type(x))
+#     print(x['Dynamite'])
+#     print(x['Dynamite']['FleetAPIEndpoint'])
+#     print(x['Dynamite']['FleetAPIEndpoint']['IP'])
