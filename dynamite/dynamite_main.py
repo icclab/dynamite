@@ -16,7 +16,7 @@ if 'C:\\Users\\brnr\\PycharmProjects\\dynamite' not in sys.path:
     sys.path.append('C:\\Users\\brnr\\PycharmProjects\\dynamite')
 
 from dynamite.GENERAL.DynamiteHelper import DYNAMITE_ENVIRONMENT_STRUCT
-from dynamite.GENERAL.FleetHandler import FleetHandler
+from dynamite.GENERAL.FleetServiceHandler import FleetServiceHandler
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
 from dynamite.INIT.DynamiteServiceHandler import DynamiteServiceHandler
 
@@ -93,5 +93,7 @@ if __name__ == '__main__':
     dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
 
     # this should be called from within the DynamiteServiceHandler!
-    fleet = FleetHandler(dynamite_config.FleetAPIEndpoint.ip, str(dynamite_config.FleetAPIEndpoint.port))
-    fleet.submit('example.service', dynamite_service_handler.ServiceJSONObjectDict['example.service'])
+    fleet = FleetServiceHandler(dynamite_config.FleetAPIEndpoint.ip, str(dynamite_config.FleetAPIEndpoint.port))
+
+    #fleet.submit('example.service', dynamite_service_handler.ServiceJSONObjectDict['example.service'])
+    fleet.destroy('example.service')

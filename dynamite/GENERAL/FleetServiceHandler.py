@@ -3,7 +3,8 @@ __author__ = 'brnr'
 import requests
 import json
 
-class FleetHandler(object):
+
+class FleetServiceHandler(object):
 
     # Instance Variables
     ip = None
@@ -34,26 +35,31 @@ class FleetHandler(object):
         else:
             return False
 
+    # Returns HTTP Response Status
+    # Successful Response-Code: 201
+    # Service Exists Already Response-Code: 204
     def submit(self, service_name, json_definition_str):
         request_url = self.fleet_units_url + service_name
         request_header = self.http_json_content_type_header
         request_data = json_definition_str
-        #
-        # print(request_url)
-        # print(request_header)
-        # print(request_data)
-        print(type(request_data))
 
         # curl http://127.0.0.1:49153/fleet/v1/units/example.service -H "Content-Type: application/json" -X PUT -d @example.service.json
-        # Successful Response-Code: 201
         response = requests.put(request_url, headers=request_header, data=request_data)
 
-        # json_response = json.loads(response.text)
-        # print(json_response)
-        print(response.status_code)
-        print(response.text)
+        return response.status_code
 
-    def destroy(self):
+    # Returns HTTP Response Status
+    # Successful Response-Code: 204
+    # Service Does Not Exist: 404
+    def destroy(self, service_name):
+        request_url = self.fleet_units_url + service_name
+
+        response = requests.delete(request_url)
+
+        return response.status_code
+
+    # load, unload, start and stop should all take advantage of the _change_state function
+    def _change_state(self, state):
         pass
 
     def load(self):
@@ -96,4 +102,4 @@ if __name__ == '__main__':
     # print(json_response)
     # print(type(json_response))
 
-    x = FleetHandler("127.0.0.1", "49153")
+    x = FleetServiceHandler("127.0.0.1", "49153")

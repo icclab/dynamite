@@ -16,7 +16,8 @@ from dynamite.INIT.DynamiteConfig import DynamiteConfig
 class DynamiteServiceHandler(object):
     # Instance Variables
     DynamiteConfig = None
-    ServiceJSONObjectDict = {}          # service-file-name --> json-object
+    ServiceJSONObjectDict = {}          # service-file-name --> json-object #### change to service-file-name --> FleetService object
+    # FleetServiceDict = {}
 
     # Takes a >> PATH/unit_file_name << as argument
     # Returns a python list-object (which can then be encoded to json)
