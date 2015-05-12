@@ -3,6 +3,9 @@ __author__ = 'brnr'
 import requests
 import json
 
+from dynamite.GENERAL.FleetService import FleetService, FLEET_STATE_STRUCT
+from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
+
 
 class FleetServiceHandler(object):
 
@@ -38,41 +41,116 @@ class FleetServiceHandler(object):
     # Returns HTTP Response Status
     # Successful Response-Code: 201
     # Service Exists Already Response-Code: 204
-    def submit(self, service_name, json_definition_str):
-        request_url = self.fleet_units_url + service_name
-        request_header = self.http_json_content_type_header
-        request_data = json_definition_str
+    def submit(self, fleet_service):
+        if not isinstance(fleet_service, FleetService):
+            raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
 
-        # curl http://127.0.0.1:49153/fleet/v1/units/example.service -H "Content-Type: application/json" -X PUT -d @example.service.json
-        response = requests.put(request_url, headers=request_header, data=request_data)
+        if fleet_service.state is None:
+            service_name = fleet_service.service_config_details.name_of_unit_file
 
-        return response.status_code
+            fleet_service.unit_file_details_json_dict["desiredState"] = FLEET_STATE_STRUCT.INACTIVE
+            fleet_service.state = FLEET_STATE_STRUCT.INACTIVE
+
+            service_json = json.dumps(fleet_service.unit_file_details_json_dict)
+
+            request_url = self.fleet_units_url + service_name
+            request_header = self.http_json_content_type_header
+            request_data = service_json
+
+            # curl http://127.0.0.1:49153/fleet/v1/units/example.service -H "Content-Type: application/json" -X PUT -d @example.service.json
+            response = requests.put(request_url, headers=request_header, data=request_data)
+
+            return response.status_code
+        else:
+            return None
+
 
     # Returns HTTP Response Status
     # Successful Response-Code: 204
     # Service Does Not Exist: 404
-    def destroy(self, service_name):
-        request_url = self.fleet_units_url + service_name
+    def destroy(self, fleet_service):
+        if fleet_service.state is not None:
 
-        response = requests.delete(request_url)
+            fleet_service.unit_file_details_json_dict["desiredState"] = None
+            fleet_service.state = None
+
+            service_name = fleet_service.service_config_details.name_of_unit_file
+            request_url = self.fleet_units_url + service_name
+
+            response = requests.delete(request_url)
+
+            return response.status_code
+        else:
+            return None
+
+    # load, unload, start and stop should all take advantage of the _change_state function
+    def _change_state(self, fleet_service, new_state):
+
+        if new_state not in FLEET_STATE_STRUCT.ALLOWED_STATES:
+            raise IllegalArgumentError("Error: <new_state> values not allowed. Only allowed values are: " + FLEET_STATE_STRUCT.ALLOWED_STATES)
+
+        fleet_service.state = new_state
+        fleet_service.unit_file_details_json_dict["desiredState"] = new_state
+
+        service_name = fleet_service.service_config_details.name_of_unit_file
+
+        request_url = self.fleet_units_url + service_name
+        request_header = self.http_json_content_type_header
+        request_data = json.dumps({"desiredState": new_state})
+
+        # curl http://127.0.0.1:49153/fleet/v1/units/example.service -H "Content-Type: application/json" -X PUT -d '{"desiredState": "loaded"}'
+        response = requests.put(request_url, headers=request_header, data=request_data)
 
         return response.status_code
 
-    # load, unload, start and stop should all take advantage of the _change_state function
-    def _change_state(self, state):
-        pass
+    def load(self, fleet_service):
+        if not isinstance(fleet_service, FleetService):
+            raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
 
-    def load(self):
-        pass
+        if fleet_service.state == FLEET_STATE_STRUCT.INACTIVE:
+            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LOADED)
+            return response
+        elif fleet_service.state is None:
+            self.submit(fleet_service)
+            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LOADED)
+            return response
+        else:
+            return None
 
-    def unload(self):
-        pass
+    def unload(self, fleet_service):
+        if not isinstance(fleet_service, FleetService):
+            raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
 
-    def start(self):
-        pass
+        if fleet_service.state == FLEET_STATE_STRUCT.LOADED or fleet_service.state == FLEET_STATE_STRUCT.LAUNCHED:
+            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.INACTIVE)
+            return response
+        else:
+            return None
 
-    def stop(self):
-        pass
+    def start(self, fleet_service):
+        if not isinstance(fleet_service, FleetService):
+            raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
+
+        if fleet_service.state == FLEET_STATE_STRUCT.INACTIVE or fleet_service.state == FLEET_STATE_STRUCT.LOADED:
+            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LAUNCHED)
+            return response
+        elif fleet_service.state is None:
+            self.submit(fleet_service)
+            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LAUNCHED)
+            return response
+        else:
+            return None
+
+    def stop(self, fleet_service):
+        if not isinstance(fleet_service, FleetService):
+            raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
+
+        if fleet_service.state == FLEET_STATE_STRUCT.LAUNCHED:
+            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LOADED)
+            return response
+        else:
+            return None
+
 
     def __init__(self, ip, port):
 

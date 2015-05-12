@@ -84,6 +84,7 @@ class DynamiteConfig(object):
             min_instance = None
             max_instance = None
             base_instance_prefix_number = None
+            ports_per_instance = None
             service_announcer = None
             service_dependency = None
             scale_up_policy = None
@@ -96,6 +97,7 @@ class DynamiteConfig(object):
                 self.min_instance = service_detail_dict['min_instance'] if 'min_instance' in service_detail_dict else None
                 self.max_instance = service_detail_dict['max_instance'] if 'max_instance' in service_detail_dict else None
                 self.base_instance_prefix_number = service_detail_dict['base_instance_prefix_number'] if 'base_instance_prefix_number' in service_detail_dict else None
+                self.ports_per_instance = service_detail_dict['ports_per_instance'] if 'ports_per_instance' in service_detail_dict else None
                 self.service_announcer = service_detail_dict['service_announcer'] if 'service_announcer' in service_detail_dict else None
                 self.service_dependency = service_detail_dict['service_dependency'] if 'service_dependency' in service_detail_dict else None
                 self.scale_up_policy = service_detail_dict['scale_up_policy'] if 'scale_up_policy' in service_detail_dict else None
@@ -240,7 +242,7 @@ if __name__ == "__main__":
     #dynamite_config = DynamiteConfig(path_to_config_file)
     #dynamite_config = DynamiteConfig("/it/is/just/wrong.yaml")
 
-    print(dynamite_config.Service.apache.service_dependency)
+    print(dynamite_config.Service.a)
 
     #print(dynamite_config.FleetAPIEndpoint)
     #print(dynamite_config.Service)

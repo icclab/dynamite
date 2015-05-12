@@ -13,46 +13,25 @@ Dynamite:
   Service:
     example:
       name_of_unit_file: example.service
-      type: test
-      min_instance: 1
-      max_instance: 1
-      base_instance_prefix_number: 9999
-      # service_announcer: zurmo_apache_discovery
+      type: test_service
+    a:
+      name_of_unit_file: a@.service
+      type: test_service
+      min_instace: 2
+      max_instance: 4
+      base_instance_prefix_number: 12021
+      ports_per_instance: 2
+      service_announcer: a_service_announcer
       # service_dependency:
-      #   - zurmo_application
-      #   - zurmo_config
-      # scale_up_policy:
-      #   ScalingPolicy: scale_up
-      # scale_down_policy:
-      #   ScalingPolicy: scale_down
-    apache:
-      name_of_unit_file: apache@.service
-      type: webserver
-      min_instance: 2
-      max_instance: 5
-      base_instance_prefix_number: 8080
-      service_announcer: zurmo_apache_discovery
-      service_dependency:
-        - zurmo_application
-        - zurmo_config
+      #   - service_x
+      #   - service_y
       scale_up_policy:
         ScalingPolicy: scale_up
       scale_down_policy:
         ScalingPolicy: scale_down
-    haproxy:
-      name_of_unit_file: haproxy.service
-      type: loadbalancer
-      min_instance: 1
-      max_instance: 1
-      base_instance_prefix_number: 80
-      service_announcer: zurmo_haproxy_discovery
-#      service_dependency:
-#        - zurmo_application
-#        - zurmo_config
-#      scale_up_policy:
-#        ScalingPolicy: scale_up
-#      scale_down_policy:
-#        ScalingPolicy: scale_down
+    a_service_announcer:
+      name_of_unit_file: a_service_announcer@.service
+      type: service_announcer
   ScalingPolicy:
     scale_up:
       service: haproxy

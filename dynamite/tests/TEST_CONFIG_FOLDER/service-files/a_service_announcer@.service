@@ -1,0 +1,25 @@
+# a_service_announcer.service
+
+[Unit]
+Description=Announces Loadbalancer
+BindsTo=a@%i.service
+After=a@%i.service
+
+[Service]
+EnvironmentFile=/etc/environment
+
+Restart=always
+
+ExecStart=/bin/sh -c "UUID=`uuidgen`; echo $UUID > /tmp/service_service_announcer_%i.uuid; TTL=10; SLEEP_TIME=7; \
+  etcdctl setdir /services/service/$UUID --ttl $TTL; \
+    while true; \
+      do \
+        etcdctl updatedir /services/service/$UUID --ttl $TTL; \
+        etcdctl set /services/service/$UUID/host %H --ttl $TTL; \
+        sleep $SLEEP_TIME; \
+      done"
+
+ExecStop=/bin/sh -c "etcdctl rm --recursive /services/service/`cat /tmp/service_service_announcer_%i.uuid` && rm -f /tmp/service_service_announcer_%i.uuid"
+
+[X-Fleet]
+MachineOf=a@%i.service
