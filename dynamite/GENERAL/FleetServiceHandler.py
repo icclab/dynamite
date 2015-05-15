@@ -41,17 +41,20 @@ class FleetServiceHandler(object):
     # Returns HTTP Response Status
     # Successful Response-Code: 201
     # Service Exists Already Response-Code: 204
-    def submit(self, fleet_service):
-        if not isinstance(fleet_service, FleetService):
+    def submit(self, fleet_service_instance):
+        if not isinstance(fleet_service_instance, FleetService):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
 
-        if fleet_service.state is None:
-            service_name = fleet_service.service_config_details.name_of_unit_file
+        if fleet_service_instance.service_announcer:
+            self.submit(fleet_service_instance.service_announcer)
 
-            fleet_service.unit_file_details_json_dict["desiredState"] = FLEET_STATE_STRUCT.INACTIVE
-            fleet_service.state = FLEET_STATE_STRUCT.INACTIVE
+        if fleet_service_instance.state is None:
+            service_name = fleet_service_instance.name
 
-            service_json = json.dumps(fleet_service.unit_file_details_json_dict)
+            fleet_service_instance.unit_file_details_json_dict["desiredState"] = FLEET_STATE_STRUCT.INACTIVE
+            fleet_service_instance.state = FLEET_STATE_STRUCT.INACTIVE
+
+            service_json = json.dumps(fleet_service_instance.unit_file_details_json_dict)
 
             request_url = self.fleet_units_url + service_name
             request_header = self.http_json_content_type_header
@@ -68,13 +71,17 @@ class FleetServiceHandler(object):
     # Returns HTTP Response Status
     # Successful Response-Code: 204
     # Service Does Not Exist: 404
-    def destroy(self, fleet_service):
-        if fleet_service.state is not None:
+    def destroy(self, fleet_service_instance):
+        if fleet_service_instance.state is not None:
 
-            fleet_service.unit_file_details_json_dict["desiredState"] = None
-            fleet_service.state = None
+            # Destroy Service announcer if one should exist
+            if fleet_service_instance.service_announcer:
+                self.destroy(fleet_service_instance.service_announcer)
 
-            service_name = fleet_service.service_config_details.name_of_unit_file
+            fleet_service_instance.unit_file_details_json_dict["desiredState"] = None
+            fleet_service_instance.state = None
+
+            service_name = fleet_service_instance.name
             request_url = self.fleet_units_url + service_name
 
             response = requests.delete(request_url)
@@ -92,7 +99,7 @@ class FleetServiceHandler(object):
         fleet_service.state = new_state
         fleet_service.unit_file_details_json_dict["desiredState"] = new_state
 
-        service_name = fleet_service.service_config_details.name_of_unit_file
+        service_name = fleet_service.name
 
         request_url = self.fleet_units_url + service_name
         request_header = self.http_json_content_type_header
@@ -103,50 +110,80 @@ class FleetServiceHandler(object):
 
         return response.status_code
 
-    def load(self, fleet_service):
-        if not isinstance(fleet_service, FleetService):
+    def load(self, fleet_service_instance):
+        if not isinstance(fleet_service_instance, FleetService):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
 
-        if fleet_service.state == FLEET_STATE_STRUCT.INACTIVE:
-            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LOADED)
+        if fleet_service_instance.state == FLEET_STATE_STRUCT.INACTIVE:
+            response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LOADED)
+
+            # Also load service announcer after parent service was loaded
+            if fleet_service_instance.service_announcer:
+                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LOADED)
+
             return response
-        elif fleet_service.state is None:
-            self.submit(fleet_service)
-            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LOADED)
+        elif fleet_service_instance.state is None:
+            self.submit(fleet_service_instance)
+
+            # Also load service announcer after parent service was loaded
+            if fleet_service_instance.service_announcer:
+                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LOADED)
+
+            response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LOADED)
             return response
         else:
             return None
 
-    def unload(self, fleet_service):
-        if not isinstance(fleet_service, FleetService):
+    def unload(self, fleet_service_instance):
+        if not isinstance(fleet_service_instance, FleetService):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
 
-        if fleet_service.state == FLEET_STATE_STRUCT.LOADED or fleet_service.state == FLEET_STATE_STRUCT.LAUNCHED:
-            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.INACTIVE)
+        if fleet_service_instance.state == FLEET_STATE_STRUCT.LOADED or fleet_service_instance.state == FLEET_STATE_STRUCT.LAUNCHED:
+            response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.INACTIVE)
+
+            # Also unload service announcer after parent service was unloaded
+            if fleet_service_instance.service_announcer:
+                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.INACTIVE)
+
             return response
         else:
             return None
 
-    def start(self, fleet_service):
-        if not isinstance(fleet_service, FleetService):
+    def start(self, fleet_service_instance):
+        if not isinstance(fleet_service_instance, FleetService):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
 
-        if fleet_service.state == FLEET_STATE_STRUCT.INACTIVE or fleet_service.state == FLEET_STATE_STRUCT.LOADED:
-            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LAUNCHED)
+        if fleet_service_instance.state == FLEET_STATE_STRUCT.INACTIVE or fleet_service_instance.state == FLEET_STATE_STRUCT.LOADED:
+            response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LAUNCHED)
+
+            # Also start service announcer after parent service was started
+            if fleet_service_instance.service_announcer:
+                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LAUNCHED)
+
             return response
-        elif fleet_service.state is None:
-            self.submit(fleet_service)
-            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LAUNCHED)
+        elif fleet_service_instance.state is None:
+            self.submit(fleet_service_instance)
+            response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LAUNCHED)
+
+            # Also start service announcer after parent service was started
+            if fleet_service_instance.service_announcer:
+                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LAUNCHED)
+
             return response
         else:
             return None
 
-    def stop(self, fleet_service):
-        if not isinstance(fleet_service, FleetService):
+    def stop(self, fleet_service_instance):
+        if not isinstance(fleet_service_instance, FleetService):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService>")
 
-        if fleet_service.state == FLEET_STATE_STRUCT.LAUNCHED:
-            response = self._change_state(fleet_service, FLEET_STATE_STRUCT.LOADED)
+        if fleet_service_instance.state == FLEET_STATE_STRUCT.LAUNCHED:
+            response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LOADED)
+
+            # Also stop service announcer after parent service was stopped
+            if fleet_service_instance.service_announcer:
+                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LOADED)
+
             return response
         else:
             return None
@@ -169,6 +206,88 @@ class FleetServiceHandler(object):
 
         if not self.test_connection():
             raise ConnectionError("Error: Could not establish connection to Fleet")
+
+    # This function expects the parent service / the service definition
+    def create_new_fleet_service_instance(self, fleet_service, port_numbers=None):
+        if fleet_service is None or not isinstance(fleet_service, FleetService):
+            raise ValueError("Error: <fleet_service> argument needs to be of type <dynamite.GENERAL.FleetService>")
+
+        # TODO: Maybe this has to be clarified more clearly. Instance Name = Port Number
+
+        #instance_name = fleet_service.get_next_port_numbers()
+        instance_name = port_numbers if port_numbers is not None else fleet_service.get_next_port_numbers()
+
+        if instance_name is None:
+            # create instance with no instance name
+            # make sure to only create one instance of this!
+            # new_fleet_instance = FleetService(
+            if len(fleet_service.fleet_service_instances) == 1:
+                return None
+            else:
+                if fleet_service.service_announcer:
+                    new_fleet_service_name = fleet_service.service_config_details.name_of_unit_file
+
+                    service_announcer_instance = self.create_new_fleet_service_instance(fleet_service.service_announcer)
+
+                    new_fleet_instance = FleetService(new_fleet_service_name,
+                                                      fleet_service.path_on_filesystem,
+                                                      fleet_service.unit_file_details_json_dict,
+                                                      fleet_service.service_config_details,
+                                                      state=None,
+                                                      is_template=None,
+                                                      service_announcer=service_announcer_instance)
+
+                    fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
+                    return new_fleet_instance
+                else:
+                    new_fleet_service_name = fleet_service.service_config_details.name_of_unit_file
+
+                    new_fleet_instance = FleetService(new_fleet_service_name,
+                                                      fleet_service.path_on_filesystem,
+                                                      fleet_service.unit_file_details_json_dict,
+                                                      fleet_service.service_config_details,
+                                                      state=None,
+                                                      is_template=None,
+                                                      service_announcer=None)
+
+                    fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
+                    return new_fleet_instance
+        else:
+            # create fleet_service instance with
+            # e.g. put instance name after @ sign
+            # new_fleet_instance = FleetService(
+            if fleet_service.service_announcer:
+                new_fleet_service_name = fleet_service.name + "@" + str(instance_name[0]) + ".service"
+
+                service_announcer_instance = self.create_new_fleet_service_instance(fleet_service.service_announcer,
+                                                                                    instance_name)
+
+                new_fleet_instance = FleetService(new_fleet_service_name,
+                                                  fleet_service.path_on_filesystem,
+                                                  fleet_service.unit_file_details_json_dict,
+                                                  fleet_service.service_config_details,
+                                                  state=None,
+                                                  is_template=None,
+                                                  service_announcer=service_announcer_instance)
+
+                fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
+                return new_fleet_instance
+            else:
+                new_fleet_service_name = fleet_service.name + "@" + str(instance_name[0]) + ".service"
+
+                new_fleet_instance = FleetService(new_fleet_service_name,
+                                                  fleet_service.path_on_filesystem,
+                                                  fleet_service.unit_file_details_json_dict,
+                                                  fleet_service.service_config_details,
+                                                  state=None,
+                                                  is_template=None,
+                                                  service_announcer=None)
+
+                fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
+                return new_fleet_instance
+
+
+        # save the new_fleet_instance in the <fleet_service>.fleet_service_instances argument
 
 
     def __str__(self):

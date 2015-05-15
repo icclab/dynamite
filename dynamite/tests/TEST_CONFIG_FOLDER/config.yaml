@@ -17,10 +17,10 @@ Dynamite:
     a:
       name_of_unit_file: a@.service
       type: test_service
-      min_instace: 2
+      min_instance: 2
       max_instance: 4
       base_instance_prefix_number: 12021
-      ports_per_instance: 2
+      ports_per_instance: 1
       service_announcer: a_service_announcer
       # service_dependency:
       #   - service_x

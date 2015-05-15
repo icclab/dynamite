@@ -92,43 +92,8 @@ if __name__ == '__main__':
 
     dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
 
-    # this should be called from within the DynamiteServiceHandler!
-    fleet = FleetServiceHandler(dynamite_config.FleetAPIEndpoint.ip, str(dynamite_config.FleetAPIEndpoint.port))
+    #input("click to add a new 'a' service...")
+    #dynamite_service_handler.add_new_fleet_service_instance("a")
 
-    fleet_service = dynamite_service_handler.FleetServiceDict['example']
-
-    #print(fleet_service.unit_file_details_json_dict)
-    # print(fleet_service.state)
-    # print(dynamite_service_handler.FleetServiceDict['example'].unit_file_details_json_dict['desiredState'])
-
-    # dynamite_service_handler.FleetServiceDict['example'].unit_file_details_json_dict['desiredState']
-
-    submit_response = dynamite_service_handler.FleetServiceHandler.start(fleet_service)
-
-    input("Started example.service. Next is unloading...")
-
-    stop_response = dynamite_service_handler.FleetServiceHandler.unload(fleet_service)
-
-    input("Press Key to destroy example.service...")
-    submit_response = dynamite_service_handler.FleetServiceHandler.destroy(fleet_service)
-
-    # print(fleet_service.state)
-    # print(dynamite_service_handler.FleetServiceDict['example'].unit_file_details_json_dict['desiredState'])
-
-    # input("Submitted example.service. Next is loading...")
-    #
-    # load_response = dynamite_service_handler.FleetServiceHandler.load(fleet_service)
-    #
-    # input("Loaded example.service. Next is starting...")
-    #
-    # start_response = dynamite_service_handler.FleetServiceHandler.start(fleet_service)
-
-    #unload_response = dynamite_service_handler.FleetServiceHandler.unload(fleet_service)
-    #print(unload_response)
-
-
-    #dynamite_service_handler.FleetServiceHandler.destroy2(fleet_service)
-
-    #dynamite_service_handler.FleetServiceHandler.submit('example.service', fleet_service.unit_file_details_json)
-    #fleet.submit('example.service', dynamite_service_handler.FleetServiceDict['example.service'].unit_file_details_json)
-    #fleet.destroy('example.service')
+    input("click to destroy all services...")
+    dynamite_service_handler.destroy_all_services()

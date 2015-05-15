@@ -10,3 +10,6 @@ class ServiceFileNotFoundError(Exception):
 
 class DuplicateServiceFileError(Exception):
     pass
+
+class ServiceAnnouncerFileNotFoundError(Exception):
+    pass
