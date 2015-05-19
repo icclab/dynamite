@@ -189,24 +189,6 @@ class FleetServiceHandler(object):
             return None
 
 
-    def __init__(self, ip, port):
-
-        # Maybe add some more validation checks for <ip> and <port> argument
-        if ip is None or not isinstance(ip, str):
-            raise ValueError("Error: <ip> argument needs to be of type <str> (e.g.: '127.0.0.1'")
-
-        if port is None or not isinstance(port, str):
-            raise ValueError("Error: <port> argument needs to be of type <str>")
-
-        self.ip = ip
-        self.port = port
-        self.fleet_base_url = "http://" + self.ip + ":" + self.port + "/fleet/v1/"
-        self.fleet_machines_url = self.fleet_base_url + "machines"
-        self.fleet_units_url = self.fleet_base_url + "units/"
-
-        if not self.test_connection():
-            raise ConnectionError("Error: Could not establish connection to Fleet")
-
     # This function expects the parent service / the service definition
     def create_new_fleet_service_instance(self, fleet_service, port_numbers=None):
         if fleet_service is None or not isinstance(fleet_service, FleetService):
@@ -214,7 +196,6 @@ class FleetServiceHandler(object):
 
         # TODO: Maybe this has to be clarified more clearly. Instance Name = Port Number
 
-        #instance_name = fleet_service.get_next_port_numbers()
         instance_name = port_numbers if port_numbers is not None else fleet_service.get_next_port_numbers()
 
         if instance_name is None:
@@ -253,9 +234,11 @@ class FleetServiceHandler(object):
                     fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
                     return new_fleet_instance
         else:
-            # create fleet_service instance with
-            # e.g. put instance name after @ sign
-            # new_fleet_instance = FleetService(
+
+            # Don't create a new instance if there is already a maximum amount of services
+            if len(fleet_service.fleet_service_instances) == fleet_service.service_config_details.max_instance:
+                return None
+
             if fleet_service.service_announcer:
                 new_fleet_service_name = fleet_service.name + "@" + str(instance_name[0]) + ".service"
 
@@ -286,9 +269,39 @@ class FleetServiceHandler(object):
                 fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
                 return new_fleet_instance
 
+    def remove_fleet_service_instance(self, fleet_service, fleet_service_instance_name):
+        # Remove used port/instance numbers
 
-        # save the new_fleet_instance in the <fleet_service>.fleet_service_instances argument
+        if fleet_service.used_port_numbers is not None:
+            # e.g a@12021.service --> instance_number = 12021
+            instance_number = fleet_service_instance_name.split("@")
+            instance_number = instance_number[1].split(".")
+            instance_number = int(instance_number[0])
 
+        fleet_service_instance = fleet_service.fleet_service_instances[fleet_service_instance_name]
+
+        for i in range(fleet_service.service_config_details.ports_per_instance):
+            fleet_service.used_port_numbers[fleet_service.used_port_numbers.index(instance_number+i)] = 0
+
+        self.destroy(fleet_service_instance)
+
+    def __init__(self, ip, port):
+
+        # Maybe add some more validation checks for <ip> and <port> argument
+        if ip is None or not isinstance(ip, str):
+            raise ValueError("Error: <ip> argument needs to be of type <str> (e.g.: '127.0.0.1'")
+
+        if port is None or not isinstance(port, str):
+            raise ValueError("Error: <port> argument needs to be of type <str>")
+
+        self.ip = ip
+        self.port = port
+        self.fleet_base_url = "http://" + self.ip + ":" + self.port + "/fleet/v1/"
+        self.fleet_machines_url = self.fleet_base_url + "machines"
+        self.fleet_units_url = self.fleet_base_url + "units/"
+
+        if not self.test_connection():
+            raise ConnectionError("Error: Could not establish connection to Fleet")
 
     def __str__(self):
         pass

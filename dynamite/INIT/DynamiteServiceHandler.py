@@ -222,13 +222,24 @@ class DynamiteServiceHandler(object):
 
         if fleet_service_name in self.FleetServiceDict:
 
-            x = self.FleetServiceDict[fleet_service_name]
-            new_fleet_service_instance = self.FleetServiceHandler.create_new_fleet_service_instance(self.FleetServiceDict[fleet_service_name])
+            fleet_service = self.FleetServiceDict[fleet_service_name]
+            new_fleet_service_instance = self.FleetServiceHandler.create_new_fleet_service_instance(fleet_service)
 
             if new_fleet_service_instance is not None:
                 self.FleetServiceHandler.start(new_fleet_service_instance)
         else:
             return None
+
+    def remove_fleet_service_instance(self, fleet_service_instance_name):
+        fleet_service_handler = self.FleetServiceHandler
+        fleet_service_dict = self.FleetServiceDict
+
+        for service_name, fleet_service in fleet_service_dict.items():
+            if fleet_service_instance_name in fleet_service.fleet_service_instances:
+                # return fleet_service_handler.destroy(fleet_service.fleet_service_instances[fleet_service_instance_name])
+                return fleet_service_handler.remove_fleet_service_instance(fleet_service, fleet_service_instance_name)
+
+        return None
 
     def __init__(self, dynamite_config):
         if not isinstance(dynamite_config, DynamiteConfig):

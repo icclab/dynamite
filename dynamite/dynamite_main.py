@@ -92,8 +92,17 @@ if __name__ == '__main__':
 
     dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
 
+    print(dynamite_config.Service.a.service_dependency[0])
     #input("click to add a new 'a' service...")
     #dynamite_service_handler.add_new_fleet_service_instance("a")
 
-    input("click to destroy all services...")
-    dynamite_service_handler.destroy_all_services()
+# ########################
+#     input("click to remove <a@12021.service> ...")
+#
+#     dynamite_service_handler.remove_fleet_service_instance("a@12021.service")
+#
+#     input("click to add a new 'a' service...")
+#     dynamite_service_handler.add_new_fleet_service_instance("a")
+#
+#     input("click to destroy all services...")
+#     dynamite_service_handler.destroy_all_services()

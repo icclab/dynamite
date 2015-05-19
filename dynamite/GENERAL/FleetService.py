@@ -16,7 +16,7 @@ class FleetService(object):
     path_on_filesystem = None
     unit_file_details_json_dict = None
     state = None
-    service_config_details = None               # of type DynamiteConfig.ServiceStruct.ServiceDetailStruct
+    service_config_details = None           # of type DynamiteConfig.ServiceStruct.ServiceDetailStruct
     is_template = None
     used_port_numbers = None
     service_announcer = None
@@ -30,15 +30,18 @@ class FleetService(object):
         if self.used_port_numbers is None:
             return None
 
+        # All ports already used
+        if 0 not in self.used_port_numbers:
+            return None
+
         next_ports_to_use = []
         ports_per_instance = self.service_config_details.ports_per_instance
-        for i in range(ports_per_instance):
-            next_ports_to_use.append(self.used_port_numbers[i-ports_per_instance])
+        base_port_number = self.service_config_details.base_instance_prefix_number
 
-        # add the next ports to the list for the next time this function gets called
-        latest_port_number = self.used_port_numbers[-1]
-        for i in range(1, ports_per_instance+1, 1):
-            self.used_port_numbers.append(latest_port_number+i)
+        for i in range(ports_per_instance):
+            port_number = base_port_number + self.used_port_numbers.index(0)
+            self.used_port_numbers[self.used_port_numbers.index(0)] = port_number
+            next_ports_to_use.append(port_number)
 
         return next_ports_to_use
 
@@ -72,16 +75,12 @@ class FleetService(object):
             self.is_template = is_template
 
         if is_template and self.service_config_details.type != "service_announcer":
-            self.used_port_numbers = []
-
-            for i in range(self.service_config_details.ports_per_instance):
-                self.used_port_numbers.append(self.service_config_details.base_instance_prefix_number + i)
+            self.used_port_numbers = [0] * self.service_config_details.max_instance * self.service_config_details.ports_per_instance
 
         if service_announcer is not None:
             self.service_announcer = service_announcer
 
         self.fleet_service_instances = {}
-        self.number_of_fleet_service_instances = 0
 
     def __str__(self):
         return_string = "FleetService Instance:\n" \

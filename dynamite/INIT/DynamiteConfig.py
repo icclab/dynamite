@@ -2,6 +2,9 @@ __author__ = 'brnr'
 
 import os
 import yaml
+from intervaltree import Interval, IntervalTree
+from dynamite.GENERAL.DynamiteExceptions import OverlappingPortRangeError
+from dynamite.GENERAL.DynamiteExceptions import ServiceDependencyNotExistError
 
 
 class DynamiteConfig(object):
@@ -11,6 +14,8 @@ class DynamiteConfig(object):
     ETCD = None
     Service = None
     ScalingPolicy = None
+
+    IntervalTree = None
 
 
     class ServiceFilesStruct(object):
@@ -184,6 +189,39 @@ class DynamiteConfig(object):
 
         return dynamite_yaml_config
 
+    def check_for_overlapping_port_ranges(self):
+        self.IntervalTree = IntervalTree()
+
+        for service_name, service_detail in self.Service.__dict__.items():
+            if service_detail.base_instance_prefix_number is not None:
+                interval_start = service_detail.base_instance_prefix_number
+                interval_end = interval_start + service_detail.max_instance
+                new_interval = Interval(interval_start, interval_end)
+
+                # True if <new_interval> is already contained in interval
+                if sorted(self.IntervalTree[new_interval]):
+                    raise OverlappingPortRangeError("Error: " + new_interval + " overlaps with already existing interval(s)"
+                                                    + sorted(self.IntervalTree[new_interval]))
+                else:
+                    self.IntervalTree.add(new_interval)
+
+    # check for existence of service_dependencies
+    def check_for_service_dependencies(self):
+        list_of_services = []
+
+        for service_name in self.Service.__dict__.keys():
+            list_of_services.append(service_name)
+
+        for service_detail in self.Service.__dict__.values():
+            if service_detail.service_dependency is not None:
+                for service_dependency in service_detail.service_dependency:
+                    if service_dependency not in list_of_services:
+                        raise ServiceDependencyNotExistError("Error: Service <" + service_dependency +
+                                                             "> defined as service dependency of service <" +
+                                                             service_detail.name +
+                                                             "> was not found in list of defined services --> " +
+                                                             str(list_of_services))
+
     # Arguments:    arg_config_path: Path to the Dynamite YAML config file
     #               arg_service_folder (Optional):  List of paths containing service-files.
     #                                               Can also/additionally be defined in the dynamite yaml configuration file
@@ -229,6 +267,11 @@ class DynamiteConfig(object):
         ScalingPolicyDict = self.dynamite_yaml_config['Dynamite']['ScalingPolicy']
         self.ScalingPolicy = DynamiteConfig.ScalingPolicyStruct(ScalingPolicyDict)
 
+        # check for overlaps of the given port-numbers in the yaml-config
+        self.check_for_overlapping_port_ranges()
+
+        # check if the service dependencies exist
+        self.check_for_service_dependencies()
 
 if __name__ == "__main__":
 
@@ -239,10 +282,13 @@ if __name__ == "__main__":
     #service_folder_list = ['C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite\\tests\\TEST_CONFIG_FOLDER\\service-files']
 
     dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
+
+    #print(dynamite_config.IntervalTree)
+
     #dynamite_config = DynamiteConfig(path_to_config_file)
     #dynamite_config = DynamiteConfig("/it/is/just/wrong.yaml")
 
-    print(dynamite_config.Service.a)
+    #print(dynamite_config.Service.a)
 
     #print(dynamite_config.FleetAPIEndpoint)
     #print(dynamite_config.Service)
