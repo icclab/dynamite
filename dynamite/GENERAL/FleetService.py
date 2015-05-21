@@ -8,20 +8,49 @@ class FLEET_STATE_STRUCT(object):
     INACTIVE = "inactive"
     LOADED = "loaded"
     LAUNCHED = "launched"
-    ALLOWED_STATES = ["inactive", "loaded", "launched"]
+    ALLOWED_STATES = [None, "inactive", "loaded", "launched"]
 
 
 class FleetService(object):
     name = None
     path_on_filesystem = None
     unit_file_details_json_dict = None
-    state = None
     service_config_details = None           # of type DynamiteConfig.ServiceStruct.ServiceDetailStruct
     is_template = None
     used_port_numbers = None
     service_announcer = None
 
     fleet_service_instances = None
+
+    def to_dict(self):
+        fleet_service_json = {}
+
+        for key, value in self.__dict__.items():
+            if key == "service_config_details" and value is not None:
+                service_config_details_json = value.to_dict()
+                fleet_service_json[key] = service_config_details_json
+            elif key == "service_announcer":
+                if value is not None:
+                    fleet_service_announcer_json = value.to_dict()
+                    fleet_service_json[key] = fleet_service_announcer_json
+                else:
+                    fleet_service_json[key] = None
+            elif key == "fleet_service_instances":
+                if len(value) != 0:
+                    # fleet_service_json[key] = value
+                    fleet_service_instances_json = {}
+
+                    for service_instance_key, service_instance_value in value.items():
+                        service_instance_json = service_instance_value.to_dict()
+                        fleet_service_instances_json[service_instance_key] = service_instance_json
+
+                    fleet_service_json[key] = fleet_service_instances_json
+                else:
+                    fleet_service_json[key] = None
+            else:
+                fleet_service_json[key] = value
+
+        return fleet_service_json
 
     def get_next_port_numbers(self):
         if self.is_template is None:
@@ -47,27 +76,31 @@ class FleetService(object):
 
     def __init__(self,
                  name,
-                 path_on_filesystem,
-                 unit_file_details_json_dict,
-                 service_details_dynamite_config,
-                 state=None,
+                 path_on_filesystem=None,
+                 unit_file_details_json_dict=None,
+                 service_details_dynamite_config=None,
                  is_template=None,
                  service_announcer=None):
 
         # add a check for the variables (if None, path exists, etc)
         self.name = name
         self.unit_file_details_json_dict = unit_file_details_json_dict
-        self.state = state
 
-        if not os.path.exists(path_on_filesystem):
-            raise FileNotFoundError("Error: <" + path_on_filesystem + "> does not exist")
+        if path_on_filesystem is not None:
+            if not os.path.exists(path_on_filesystem):
+                raise FileNotFoundError("Error: <" + path_on_filesystem + "> does not exist")
+            else:
+                self.path_on_filesystem = path_on_filesystem
         else:
-            self.path_on_filesystem = path_on_filesystem
+            self.path_on_filesystem = None
 
-        if not isinstance(service_details_dynamite_config, DynamiteConfig.ServiceStruct.ServiceDetailStruct):
-            raise ValueError("Error: <service_details> argument needs to be of type <DynamiteConfig.ServiceStruct.ServiceDetailStruct>")
+        if service_details_dynamite_config is not None:
+            if not isinstance(service_details_dynamite_config, DynamiteConfig.ServiceStruct.ServiceDetailStruct):
+                raise ValueError("Error: <service_details> argument needs to be of type <DynamiteConfig.ServiceStruct.ServiceDetailStruct>")
+            else:
+                self.service_config_details = service_details_dynamite_config
         else:
-            self.service_config_details = service_details_dynamite_config
+            self.service_config_details = None
 
         if is_template is None:
             self.is_template = False
@@ -91,6 +124,40 @@ class FleetService(object):
 
         return return_string
 
+    class FleetServiceInstance(object):
+        name = None
+        state = None
+        service_announcer = None
+
+        def to_dict(self):
+            fleet_service_json = {}
+
+            for key, value in self.__dict__.items():
+                if key == "service_announcer":
+                    if value is not None:
+                        fleet_service_announcer_json = value.to_dict()
+                        fleet_service_json[key] = fleet_service_announcer_json
+                    else:
+                        fleet_service_json[key] = None
+                else:
+                    fleet_service_json[key] = value
+
+            return fleet_service_json
+
+        def __init__(self, name, state, service_announcer=None):
+            self.name = name
+
+            if state in FLEET_STATE_STRUCT.ALLOWED_STATES:
+                self.state = state
+            else:
+                raise ValueError("Error state needs to one of these: " + str(FLEET_STATE_STRUCT.ALLOWED_STATES))
+
+            if service_announcer is not None and \
+                    isinstance(service_announcer, FleetService.FleetServiceInstance):
+                self.service_announcer = service_announcer
+
+
 
 if __name__ == '__main__':
+
     print(type(FLEET_STATE_STRUCT.INACTIVE))

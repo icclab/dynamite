@@ -168,7 +168,6 @@ class DynamiteServiceHandler(object):
                                                                        path_to_service_announcer_unit_file,
                                                                        service_announcer_json_dict,
                                                                        service_announcer_details,
-                                                                       state=None,
                                                                        is_template=service_announcer_is_template,
                                                                        service_announcer=None
                                                                        )
@@ -179,7 +178,6 @@ class DynamiteServiceHandler(object):
                                              path_to_unit_file,
                                              json_dict,
                                              service_details,
-                                             None,
                                              service_is_template,
                                              service_announcer_fleet_service)
 
@@ -192,10 +190,10 @@ class DynamiteServiceHandler(object):
         return fleet_service_dict
 
     def _initial_start_all_services_to_fleet(self, fleet_service_handler, fleet_service_dict):
+
         if not isinstance(fleet_service_handler, FleetServiceHandler):
             raise IllegalArgumentError("Error: Argument <FleetServiceHandler> not instance of type <dynamite.GENERAL.FleetServiceHandler")
 
-        # TODO: Create in the minimum as many services as defined by 'min_instance'
         #       If service is not a template just create one instance
         for service_name, fleet_service in fleet_service_dict.items():
             if fleet_service.service_config_details.min_instance:
@@ -205,8 +203,8 @@ class DynamiteServiceHandler(object):
 
             for times in range(min_instances):
                 fleet_service_instance = fleet_service_handler.create_new_fleet_service_instance(fleet_service)
-                fleet_service_handler.submit(fleet_service_instance)
-                fleet_service_handler.start(fleet_service_instance)
+                fleet_service_handler.submit(fleet_service, fleet_service_instance)
+                fleet_service_handler.start(fleet_service, fleet_service_instance)
 
     def destroy_all_services(self):
         fleet_service_handler = self.FleetServiceHandler
@@ -226,7 +224,7 @@ class DynamiteServiceHandler(object):
             new_fleet_service_instance = self.FleetServiceHandler.create_new_fleet_service_instance(fleet_service)
 
             if new_fleet_service_instance is not None:
-                self.FleetServiceHandler.start(new_fleet_service_instance)
+                self.FleetServiceHandler.start(fleet_service, new_fleet_service_instance)
         else:
             return None
 
@@ -236,7 +234,6 @@ class DynamiteServiceHandler(object):
 
         for service_name, fleet_service in fleet_service_dict.items():
             if fleet_service_instance_name in fleet_service.fleet_service_instances:
-                # return fleet_service_handler.destroy(fleet_service.fleet_service_instances[fleet_service_instance_name])
                 return fleet_service_handler.remove_fleet_service_instance(fleet_service, fleet_service_instance_name)
 
         return None
@@ -253,7 +250,6 @@ class DynamiteServiceHandler(object):
                                                        str(dynamite_config.FleetAPIEndpoint.port))
 
         self._initial_start_all_services_to_fleet(self.FleetServiceHandler, self.FleetServiceDict)
-
 
 
     def __str__(self):
