@@ -4,7 +4,7 @@ import sys
 import argparse
 import os
 import platform
-
+import json
 
 # The following is only for usage of this application from the command-line
 # And only during development
@@ -16,17 +16,18 @@ if 'C:\\Users\\brnr\\PycharmProjects\\dynamite' not in sys.path:
     sys.path.append('C:\\Users\\brnr\\PycharmProjects\\dynamite')
 
 from dynamite.GENERAL.DynamiteHelper import DYNAMITE_ENVIRONMENT_STRUCT
-from dynamite.GENERAL.FleetServiceHandler import FleetServiceHandler
-from dynamite.INIT.DynamiteConfig import DynamiteConfig
-from dynamite.INIT.DynamiteServiceHandler import DynamiteServiceHandler
+from dynamite.GENERAL.DynamiteHelper import DYNAMITE_APPLICATION_STATUS
+from dynamite.INIT.DynamiteINIT import DynamiteINIT
 
 DYNAMITE_ENVIRONMENT = os.getenv('DYNAMITE_ENVIRONMENT', DYNAMITE_ENVIRONMENT_STRUCT.DEVELOPMENT)
 
 DEFAULT_CONFIG_PATH=None
 DEFAULT_SERVICE_FOLDER=None
+DEFAULT_ETCD_ENDPOINT="127.0.0.1:4001"
 
 ARG_CONFIG_PATH=None
 ARG_SERVICE_FOLDER=None
+ARG_ETCD_ENDPOINT=None
 
 def init_env():
     global DEFAULT_CONFIG_PATH
@@ -47,6 +48,7 @@ def init_env():
 def init_arguments():
     global ARG_CONFIG_PATH
     global ARG_SERVICE_FOLDER
+    global ARG_ETCD_ENDPOINT
 
     parser = argparse.ArgumentParser()
 
@@ -60,7 +62,14 @@ def init_arguments():
                         nargs='?',
                         action='append')
 
+    parser.add_argument("--etcd_endpoint", "-e",
+                        help="Define ETCD Endpoint [IP]:[PORT]. Default: " + DEFAULT_ETCD_ENDPOINT,
+                        nargs='?',
+                        default=DEFAULT_ETCD_ENDPOINT)
+
     args = parser.parse_args()
+
+    ARG_ETCD_ENDPOINT = args.etcd_endpoint
 
     ARG_CONFIG_PATH = args.config_file
 
@@ -87,14 +96,30 @@ if __name__ == '__main__':
     init_env()
     init_arguments()
 
+    dynamite_init = DynamiteINIT(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER, ARG_ETCD_ENDPOINT)
+
+    # dynamite_init.set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.NONE)
+
+    input("wait")
+
+    print(dynamite_init.dynamite_config.Service.a.min_instance)
+    # dynamite_init.dynamite_service_handler.destroy_all_services()
+
+    # dynamite_application_status = DynamiteHelper.check_dynamite_application_status()
+    # print(dynamite_application_status)
+
     # Create DynamiteConfig object to interact with loaded Dynamite YAML Configuration
-    dynamite_config = DynamiteConfig(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER)
 
-    dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
+# ########################
+#     dynamite_config = DynamiteConfig(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER)
+#
+#     dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
+# ########################
 
-    print(dynamite_config.Service.a.service_dependency[0])
-    #input("click to add a new 'a' service...")
-    #dynamite_service_handler.add_new_fleet_service_instance("a")
+
+    #print(ARG_ETCD_ENDPOINT)
+    # input("click to add a new 'a' service...")
+    # dynamite_service_handler.add_new_fleet_service_instance("a")
 
 # ########################
 #     input("click to remove <a@12021.service> ...")
@@ -104,5 +129,5 @@ if __name__ == '__main__':
 #     input("click to add a new 'a' service...")
 #     dynamite_service_handler.add_new_fleet_service_instance("a")
 #
-#     input("click to destroy all services...")
-#     dynamite_service_handler.destroy_all_services()
+    # input("click to destroy all services...")
+    # dynamite_service_handler.destroy_all_services()

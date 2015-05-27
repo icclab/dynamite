@@ -2,10 +2,11 @@ __author__ = 'brnr'
 
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
 from dynamite.INIT.DynamiteServiceHandler import DynamiteServiceHandler
-from dynamite.GENERAL.ETCDCTL import ETCDCTL
+from dynamite.GENERAL import ETCDCTL
 from dynamite.GENERAL.DynamiteHelper import DYNAMITE_APPLICATION_STATUS
 import etcd
 import json
+
 
 # used to initialize the dynamite application
 # takes different action depending on the current status (read from etcd at startup) of the application
@@ -14,11 +15,6 @@ class DynamiteINIT(object):
     dynamite_service_handler = None
 
     etcdctl = None
-    etcd_ip = None
-    etcd_port = None
-    _etcd_key_application_status = "/_dynamite/application_status"
-    _etcd_key_init_application_configuration = "_dynamite/init/application_configuration"
-    _etcd_key_running_services = "_dynamite/run/service"
 
     def init_etcdctl(self, arg_etcd_endpoint):
 
@@ -32,8 +28,8 @@ class DynamiteINIT(object):
             return None
 
         if len(arg_etcd_endpoint.split(":")) == 2:
-            self.etcd_ip, self.etcd_port = arg_etcd_endpoint.split(":")
-            etcdctl = ETCDCTL(self.etcd_ip, self.etcd_port).get_etcdctl()
+            etcd_ip, etcd_port = arg_etcd_endpoint.split(":")
+            etcdctl = ETCDCTL.create_etcdctl(etcd_ip, etcd_port)
 
             if etcdctl is not None:
                 return etcdctl
@@ -45,7 +41,7 @@ class DynamiteINIT(object):
 
     def check_dynamite_application_status_etcd(self):
         try:
-            key = self._etcd_key_application_status
+            key = ETCDCTL.etcd_key_application_status
             res = self.etcdctl.read(key)
 
             if res.value in DYNAMITE_APPLICATION_STATUS.ALLOWED_VALUES:
@@ -56,7 +52,7 @@ class DynamiteINIT(object):
 
     def set_dynamite_application_status_etcd(self, dynamite_application_state):
         if dynamite_application_state in DYNAMITE_APPLICATION_STATUS.ALLOWED_VALUES:
-            key = self._etcd_key_application_status
+            key = ETCDCTL.etcd_key_application_status
             res = self.etcdctl.write(key, dynamite_application_state)
             return res
         else:
@@ -64,18 +60,20 @@ class DynamiteINIT(object):
 
 
     def init_dynamite(self, arg_config_path, arg_service_folder):
-        self.dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder)
+        self.dynamite_config = DynamiteConfig(arg_config_path=arg_config_path,
+                                              arg_service_folder_list=arg_service_folder)
+
         self.dynamite_service_handler = DynamiteServiceHandler(self.dynamite_config)
 
         # save dynamite yaml config to etcd - this will be loaded if dynamite should crash and restart
         dynamite_config_yaml = self.dynamite_config.dynamite_yaml_config
         dynamite_config_json = json.dumps(dynamite_config_yaml)
-        self.etcdctl.write(self._etcd_key_init_application_configuration, dynamite_config_json)
+        self.etcdctl.write(ETCDCTL.etcd_key_init_application_configuration, dynamite_config_json)
 
         # save the fleet services (including the currently running instances to etcd -
         #   they will be loaded if dynamite should crash and restart
         for service_name, fleet_service in self.dynamite_service_handler.FleetServiceDict.items():
-            etcd_base_key = self._etcd_key_running_services + "/" + service_name
+            etcd_base_key = ETCDCTL.etcd_key_running_services + "/" + service_name
 
             fleet_service_dict = fleet_service.to_dict()
 
@@ -97,6 +95,9 @@ class DynamiteINIT(object):
             etcd_template_key = etcd_base_key + "/" + "template"
             self.etcdctl.write(etcd_template_key, json.dumps(fleet_service_dict))
 
+    def recover_dynamite(self, etcd_endpoint):
+        self.dynamite_config = DynamiteConfig(etcd_endpoint=etcd_endpoint)
+
 
     def __init__(self, arg_config_path, arg_service_folder, arg_etcd_endpoint):
         # create etcd Client
@@ -112,6 +113,10 @@ class DynamiteINIT(object):
             self.set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.RUNNING)
         elif dynamite_application_status == DYNAMITE_APPLICATION_STATUS.INITIALIZING:
             pass
+        elif dynamite_application_status == DYNAMITE_APPLICATION_STATUS.RUNNING:
+            self.set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.RECOVERING)
+            self.recover_dynamite(arg_etcd_endpoint)
+            self.set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.RUNNING)
         else:
             self.set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.NONE)
 

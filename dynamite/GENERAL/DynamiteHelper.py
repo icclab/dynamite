@@ -1,18 +1,8 @@
 __author__ = 'brnr'
 
-import os
-import yaml
 import logging
-import sys
-import json
 
 from dynamite.INIT.DynamiteConfig import *
-
-from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
-from dynamite.GENERAL.DynamiteExceptions import ServiceFileNotFoundError
-from dynamite.GENERAL.DynamiteExceptions import DuplicateServiceFileError
-from dynamite.GENERAL.ETCDCTL import ETCDCTL
-import etcd
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 
@@ -32,17 +22,17 @@ class DYNAMITE_APPLICATION_STATUS(object):
     ALLOWED_VALUES = [None, "Initializing", "Running", "Recovering", "Dead"]
 
 
-def check_dynamite_application_status():
-    etcdctl = ETCDCTL("127.0.0.1", "4001").get_etcdctl()
-
-    try:
-        key = "/_dynamite/application_status"
-        res = etcdctl.read(key)
-
-        if res.value in DYNAMITE_APPLICATION_STATUS.ALLOWED_VALUES:
-            return res.value
-    except etcd.EtcdKeyNotFound:
-        return DYNAMITE_APPLICATION_STATUS.NONE
+# def check_dynamite_application_status():
+#     etcdctl = ETCDCTL("127.0.0.1", "4001").get_etcdctl()
+#
+#     try:
+#         key = "/_dynamite/application_status"
+#         res = etcdctl.read(key)
+#
+#         if res.value in DYNAMITE_APPLICATION_STATUS.ALLOWED_VALUES:
+#             return res.value
+#     except etcd.EtcdKeyNotFound:
+#         return DYNAMITE_APPLICATION_STATUS.NONE
 
 
 if __name__ == '__main__':

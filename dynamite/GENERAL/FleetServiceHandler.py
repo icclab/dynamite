@@ -215,14 +215,6 @@ class FleetServiceHandler(object):
                                                                            state=None,
                                                                            service_announcer=service_announcer_instance)
 
-                    # new_fleet_instance = FleetService(new_fleet_service_name,
-                    #                                   path_on_filesystem=None, #fleet_service.path_on_filesystem, #
-                    #                                   unit_file_details_json_dict=None, # fleet_service.unit_file_details_json_dict, #
-                    #                                   service_details_dynamite_config=None, # fleet_service.service_config_details, #
-                    #                                   state=None,
-                    #                                   is_template=None,
-                    #                                   service_announcer=service_announcer_instance)
-
                     fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
                     return new_fleet_instance
                 else:
@@ -231,13 +223,6 @@ class FleetServiceHandler(object):
                     new_fleet_instance = FleetService.FleetServiceInstance(new_fleet_service_name,
                                                                            state=None,
                                                                            service_announcer=None)
-                    # new_fleet_instance = FleetService(new_fleet_service_name,
-                    #                                   path_on_filesystem=None, #fleet_service.path_on_filesystem, #
-                    #                                   unit_file_details_json_dict=None, # fleet_service.unit_file_details_json_dict, #
-                    #                                   service_details_dynamite_config=None, # fleet_service.service_config_details, #
-                    #                                   state=None,
-                    #                                   is_template=None,
-                    #                                   service_announcer=None)
 
                     if not is_announcer:
                         fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
@@ -259,14 +244,6 @@ class FleetServiceHandler(object):
                                                                        state=None,
                                                                        service_announcer=service_announcer_instance)
 
-                # new_fleet_instance = FleetService(new_fleet_service_name,
-                #                                   path_on_filesystem=None, #fleet_service.path_on_filesystem, #
-                #                                   unit_file_details_json_dict=None, # fleet_service.unit_file_details_json_dict, #
-                #                                   service_details_dynamite_config=None, # fleet_service.service_config_details, #
-                #                                   state=None,
-                #                                   is_template=None,
-                #                                   service_announcer=service_announcer_instance)
-
                 fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
                 return new_fleet_instance
             else:
@@ -275,14 +252,6 @@ class FleetServiceHandler(object):
                 new_fleet_instance = FleetService.FleetServiceInstance(new_fleet_service_name,
                                                                        state=None,
                                                                        service_announcer=None)
-
-                # new_fleet_instance = FleetService(new_fleet_service_name,
-                #                                   path_on_filesystem=None, #fleet_service.path_on_filesystem, #
-                #                                   unit_file_details_json_dict=None, # fleet_service.unit_file_details_json_dict, #
-                #                                   service_details_dynamite_config=None, # fleet_service.service_config_details, #
-                #                                   state=None,
-                #                                   is_template=None,
-                #                                   service_announcer=None)
 
                 if not is_announcer:
                     fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance

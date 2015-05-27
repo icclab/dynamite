@@ -2,10 +2,12 @@ __author__ = 'brnr'
 
 import os
 import yaml
+import json
+
 from intervaltree import Interval, IntervalTree
 from dynamite.GENERAL.DynamiteExceptions import OverlappingPortRangeError
 from dynamite.GENERAL.DynamiteExceptions import ServiceDependencyNotExistError
-
+from dynamite.GENERAL import ETCDCTL
 
 class DynamiteConfig(object):
     # Instance Variables
@@ -15,8 +17,9 @@ class DynamiteConfig(object):
     Service = None
     ScalingPolicy = None
 
-    IntervalTree = None
+    IntervalTree = None         # Should not matter after initialization!
 
+    dynamite_yaml_config = None
 
     class ServiceFilesStruct(object):
         # Instance Variables
@@ -61,13 +64,14 @@ class DynamiteConfig(object):
 
     class ETCDStruct(object):
         # Instance Variables
-        ip_api_endpoint = None
-        port_api_endpoint = None
+        # ip_api_endpoint = None
+        # port_api_endpoint = None
         application_base_path = None
 
-        def __init__(self, ip_api_endpoint, port_api_endpoint, application_base_path):
-            self.ip_api_endpoint = ip_api_endpoint
-            self.port_api_endpoint = port_api_endpoint
+        #def __init__(self, ip_api_endpoint, port_api_endpoint, application_base_path):
+        def __init__(self, application_base_path):
+            # self.ip_api_endpoint = ip_api_endpoint
+            # self.port_api_endpoint = port_api_endpoint
             self.application_base_path = application_base_path
 
         def __str__(self):
@@ -94,6 +98,14 @@ class DynamiteConfig(object):
             service_dependency = None
             scale_up_policy = None
             scale_down_policy = None
+
+            def to_dict(self):
+                service_detail_json = {}
+
+                for key, value in self.__dict__.items():
+                    service_detail_json[key] = value
+
+                return service_detail_json
 
             def __init__(self, name, service_detail_dict):
                 self.name = name
@@ -222,19 +234,14 @@ class DynamiteConfig(object):
                                                              "> was not found in list of defined services --> " +
                                                              str(list_of_services))
 
-    # Arguments:    arg_config_path: Path to the Dynamite YAML config file
-    #               arg_service_folder (Optional):  List of paths containing service-files.
-    #                                               Can also/additionally be defined in the dynamite yaml configuration file
-    def __init__(self, arg_config_path, arg_service_folder_list=None):
+    def set_instance_variables(self, dynamite_yaml_config, arg_service_folder_list=None):
+
+        self.dynamite_yaml_config = dynamite_yaml_config
 
         if isinstance(arg_service_folder_list, str):
             tmp_str = arg_service_folder_list
             arg_service_folder_list = []
             arg_service_folder_list.append(tmp_str)
-
-        dynamite_yaml_config = self.load_config_file(arg_config_path)
-
-        self.dynamite_yaml_config = dynamite_yaml_config
 
         PathList = self.dynamite_yaml_config['Dynamite']['ServiceFiles']['PathList']
         self.ServiceFiles = DynamiteConfig.ServiceFilesStruct(PathList)
@@ -256,10 +263,8 @@ class DynamiteConfig(object):
         Port = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['port']
         self.FleetAPIEndpoint = DynamiteConfig.FleetAPIEndpointStruct(IP,Port)
 
-        etcd_ip_api_endpoint = self.dynamite_yaml_config['Dynamite']['ETCD']['ip_api_endpoint']
-        etcd_port_api_endpoint = self.dynamite_yaml_config['Dynamite']['ETCD']['port_api_endpoint']
         etcd_application_base_path = self.dynamite_yaml_config['Dynamite']['ETCD']['application_base_path']
-        self.ETCD = DynamiteConfig.ETCDStruct(etcd_ip_api_endpoint, etcd_port_api_endpoint, etcd_application_base_path)
+        self.ETCD = DynamiteConfig.ETCDStruct(etcd_application_base_path)
 
         ServicesDict = self.dynamite_yaml_config['Dynamite']['Service']
         self.Service = DynamiteConfig.ServiceStruct(ServicesDict)
@@ -267,11 +272,57 @@ class DynamiteConfig(object):
         ScalingPolicyDict = self.dynamite_yaml_config['Dynamite']['ScalingPolicy']
         self.ScalingPolicy = DynamiteConfig.ScalingPolicyStruct(ScalingPolicyDict)
 
-        # check for overlaps of the given port-numbers in the yaml-config
-        self.check_for_overlapping_port_ranges()
+    def init_from_file(self, arg_config_path=None, arg_service_folder_list=None):
+        # Test if Config-File exists. If not, terminate application
+        if not os.path.exists(arg_config_path):
+            raise FileNotFoundError("--config-file: " + arg_config_path + " --> File at given config-path does not exist")
+        else:
+            dynamite_yaml_config = self.load_config_file(arg_config_path)
 
-        # check if the service dependencies exist
-        self.check_for_service_dependencies()
+        self.set_instance_variables(dynamite_yaml_config, arg_service_folder_list)
+
+    def init_from_etcd(self, etcd_endpoint):
+
+        if type(etcd_endpoint) != str:
+            raise ValueError("Error: argument <arg_etcd_endpoint> needs to be of type <str>. Format: [IP]:[PORT]")
+
+        try:
+            etcd_endpoint.split(":")
+        except ValueError:
+            print("Wrong format of <arg_etcd_endpoint> argument. Format needs to be [IP]:[PORT]")
+            return None
+
+        if len(etcd_endpoint.split(":")) == 2:
+            etcd_ip, etcd_port = etcd_endpoint.split(":")
+            etcdctl = ETCDCTL.create_etcdctl(etcd_ip, etcd_port)
+
+            if etcdctl is not None:
+                res = etcdctl.read(ETCDCTL.etcd_key_init_application_configuration)
+                dynamite_config_str = res.value
+
+                if dynamite_config_str is not None and isinstance(dynamite_config_str, str):
+                    dynamite_yaml_config = json.loads(dynamite_config_str)
+                    self.set_instance_variables(dynamite_yaml_config)
+
+            else:
+                return None
+        else:
+            raise ValueError("Error: Probably wrong format of argument <arg_etcd_endpoint>. Format: [IP]:[PORT]")
+
+
+
+    # Arguments:    arg_config_path: Path to the Dynamite YAML config file
+    #               arg_service_folder (Optional):  List of paths containing service-files.
+    #                                               Can also/additionally be defined in the dynamite yaml configuration file
+    def __init__(self, arg_config_path=None, arg_service_folder_list=None, etcd_endpoint=None):
+
+        if arg_config_path is not None:
+            self.init_from_file(arg_config_path, arg_service_folder_list)
+
+        if etcd_endpoint is not None:
+            self.init_from_etcd(etcd_endpoint)
+
+
 
 if __name__ == "__main__":
 
