@@ -17,27 +17,12 @@ class DynamiteINIT(object):
     etcdctl = None
 
     def init_etcdctl(self, arg_etcd_endpoint):
+        etcdctl = ETCDCTL.create_etcdctl(arg_etcd_endpoint)
 
-        if type(arg_etcd_endpoint) != str:
-            raise ValueError("Error: argument <arg_etcd_endpoint> needs to be of type <str>. Format: [IP]:[PORT]")
-
-        try:
-            arg_etcd_endpoint.split(":")
-        except ValueError:
-            print("Wrong format of <arg_etcd_endpoint> argument. Format needs to be [IP]:[PORT]")
-            return None
-
-        if len(arg_etcd_endpoint.split(":")) == 2:
-            etcd_ip, etcd_port = arg_etcd_endpoint.split(":")
-            etcdctl = ETCDCTL.create_etcdctl(etcd_ip, etcd_port)
-
-            if etcdctl is not None:
-                return etcdctl
-            else:
-                return None
+        if etcdctl is not None:
+            return etcdctl
         else:
-            raise ValueError("Error: Probably wrong format of argument <arg_etcd_endpoint>. Format: [IP]:[PORT]")
-
+            return None
 
     def check_dynamite_application_status_etcd(self):
         try:

@@ -35,7 +35,7 @@ def test_connection(etcd_base_url):
         print("Error connecting to ETCD. Check if Endpoint is correct: " + self.ip + ":" + self.port)
 
 
-def create_etcdctl(ip_address, port_number):
+def create_etcdctl(etcd_endpoint):
 
     global etcd_base_url
     global etcdctl
@@ -44,20 +44,23 @@ def create_etcdctl(ip_address, port_number):
 
     if etcdctl is not None:
         return etcdctl
-    else:
-        if ip_address is None or not isinstance(ip_address, str):
-            raise ValueError("Error: <ip> argument needs to be of type <str> (e.g.: '127.0.0.1'")
 
-        if port_number is None or not isinstance(port_number, str):
-            raise ValueError("Error: <port> argument needs to be of type <str>")
+    if type(etcd_endpoint) != str:
+        raise ValueError("Error: argument <arg_etcd_endpoint> needs to be of type <str>. Format: [IP]:[PORT]")
 
-        ip = ip_address
-        port = port_number
+    try:
+        etcd_endpoint.split(":")
+    except ValueError:
+        print("Wrong format of <arg_etcd_endpoint> argument. Format needs to be [IP]:[PORT]")
+        return None
 
-        etcd_base_url = "http://" + ip_address + ":" + port_number + "/v2/keys/"
+    if len(etcd_endpoint.split(":")) == 2:
+        ip, port = etcd_endpoint.split(":")
+
+        etcd_base_url = "http://" + ip + ":" + port + "/v2/keys/"
 
         if test_connection(etcd_base_url):
-            etcdctl = etcd.Client(ip_address, int(port_number))
+            etcdctl = etcd.Client(ip, int(port))
         else:
             raise ConnectionError("Error connecting to ETCD. Check if Endpoint is correct: " + ip_address + ":" + port_number)
 
@@ -65,6 +68,8 @@ def create_etcdctl(ip_address, port_number):
             return etcdctl
         else:
             return None
+    else:
+        raise ValueError("Error: Probably wrong format of argument <arg_etcd_endpoint>. Format: [IP]:[PORT]")
 
 
 def get_etcdctl():

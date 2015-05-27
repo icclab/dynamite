@@ -283,33 +283,18 @@ class DynamiteConfig(object):
 
     def init_from_etcd(self, etcd_endpoint):
 
-        if type(etcd_endpoint) != str:
-            raise ValueError("Error: argument <arg_etcd_endpoint> needs to be of type <str>. Format: [IP]:[PORT]")
+        etcdctl = ETCDCTL.create_etcdctl(etcd_endpoint)
 
-        try:
-            etcd_endpoint.split(":")
-        except ValueError:
-            print("Wrong format of <arg_etcd_endpoint> argument. Format needs to be [IP]:[PORT]")
-            return None
+        if etcdctl is not None:
+            res = etcdctl.read(ETCDCTL.etcd_key_init_application_configuration)
+            dynamite_config_str = res.value
 
-        if len(etcd_endpoint.split(":")) == 2:
-            etcd_ip, etcd_port = etcd_endpoint.split(":")
-            etcdctl = ETCDCTL.create_etcdctl(etcd_ip, etcd_port)
+            if dynamite_config_str is not None and isinstance(dynamite_config_str, str):
+                dynamite_yaml_config = json.loads(dynamite_config_str)
+                self.set_instance_variables(dynamite_yaml_config)
 
-            if etcdctl is not None:
-                res = etcdctl.read(ETCDCTL.etcd_key_init_application_configuration)
-                dynamite_config_str = res.value
-
-                if dynamite_config_str is not None and isinstance(dynamite_config_str, str):
-                    dynamite_yaml_config = json.loads(dynamite_config_str)
-                    self.set_instance_variables(dynamite_yaml_config)
-
-            else:
-                return None
         else:
-            raise ValueError("Error: Probably wrong format of argument <arg_etcd_endpoint>. Format: [IP]:[PORT]")
-
-
+            return None
 
     # Arguments:    arg_config_path: Path to the Dynamite YAML config file
     #               arg_service_folder (Optional):  List of paths containing service-files.
