@@ -107,6 +107,18 @@ class DynamiteConfig(object):
 
                 return service_detail_json
 
+            @staticmethod
+            def dict_to_instance(service_detail_struct_dict):
+
+                name = service_detail_struct_dict['name']
+
+                del service_detail_struct_dict['name']
+
+                service_detail_struct_instance = DynamiteConfig.ServiceStruct.ServiceDetailStruct(name,
+                                                                                                  service_detail_struct_dict)
+
+                return service_detail_struct_instance
+
             def __init__(self, name, service_detail_dict):
                 self.name = name
                 self.name_of_unit_file = service_detail_dict['name_of_unit_file'] if 'name_of_unit_file' in service_detail_dict else None

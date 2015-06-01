@@ -10,6 +10,7 @@ from dynamite.GENERAL.DynamiteExceptions import DuplicateServiceFileError
 from dynamite.GENERAL.DynamiteExceptions import ServiceAnnouncerFileNotFoundError
 from dynamite.GENERAL.FleetServiceHandler import FleetServiceHandler
 from dynamite.GENERAL.FleetService import FleetService
+from dynamite.GENERAL import ETCDCTL
 
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
 
@@ -238,18 +239,77 @@ class DynamiteServiceHandler(object):
 
         return None
 
-    def __init__(self, dynamite_config):
+    # This is only the case when the config was created from a file on the filesystem
+    def create_fleet_service_dict_from_dynamite_config_object(self, dynamite_config):
         if not isinstance(dynamite_config, DynamiteConfig):
             raise IllegalArgumentError("Error: Argument <dynamite_config> not instance of type 'DynamiteConfig'")
 
         self.DynamiteConfig = dynamite_config
 
-        self.FleetServiceDict = self.dynamite_config_2_fleet_service_dict(self.DynamiteConfig)
+        fleet_service_dict = self.dynamite_config_2_fleet_service_dict(self.DynamiteConfig)
+
+        if fleet_service_dict is not None:
+            return fleet_service_dict
+
+
+    def create_fleet_service_dict_from_etcd(self, etcd_endpoint):
+        etcdctl = ETCDCTL.create_etcdctl(etcd_endpoint)
+
+        if etcdctl is not None:
+            r = etcdctl.read(ETCDCTL.etcd_key_running_services, recursive=True, sorted=True)
+
+            fleet_service_dict = {}
+            fleet_service_instance_list = []
+
+            for service in r.children:
+
+                service_path_parts = service.key.split("/")
+
+                # name in fleet_service_dict
+                service_name = service_path_parts[-2]
+
+                # name in fleet_service_instances dict
+                instance_name = service_path_parts[-1]
+
+                if instance_name == "fleet_service_template":
+                    # TODO: create FleetService
+                    value = json.loads(service.value)
+                    fleet_service = FleetService.dict_to_instance(value)
+                    fleet_service_dict[fleet_service.name] = fleet_service
+                    #print(fleet_service.name)
+                    #print(value['service_announcer'])
+                else:
+                    # TODO: create FleetServiceInstance
+                    value = json.loads(service.value)
+                    fleet_service_instance = FleetService.FleetServiceInstance.dict_to_instance(value)
+                    fleet_service_instance_list.append(fleet_service_instance)
+
+            for fleet_service_instance in fleet_service_instance_list:
+                if "@" in fleet_service_instance.name:
+                    service_name = fleet_service_instance.name.split("@")[0]
+                else:
+                    service_name = fleet_service_instance.name.replace(".service", "")
+
+                fleet_service_dict[service_name].fleet_service_instances[fleet_service_instance.name] = fleet_service_instance
+
+            return fleet_service_dict
+
+        else:
+            return None
+
+    def __init__(self, dynamite_config=None, etcd_endpoint=None):
+
+        if dynamite_config is not None and etcd_endpoint is None:
+            self.FleetServiceDict = self.create_fleet_service_dict_from_dynamite_config_object(dynamite_config)
+
+        elif dynamite_config is not None and etcd_endpoint is not None:
+            self.FleetServiceDict = self.create_fleet_service_dict_from_etcd(etcd_endpoint)
 
         self.FleetServiceHandler = FleetServiceHandler(dynamite_config.FleetAPIEndpoint.ip,
                                                        str(dynamite_config.FleetAPIEndpoint.port))
 
-        self._initial_start_all_services_to_fleet(self.FleetServiceHandler, self.FleetServiceDict)
+        if dynamite_config is not None and etcd_endpoint is None:
+            self._initial_start_all_services_to_fleet(self.FleetServiceHandler, self.FleetServiceDict)
 
 
     def __str__(self):

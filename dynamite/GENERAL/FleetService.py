@@ -52,6 +52,27 @@ class FleetService(object):
 
         return fleet_service_json
 
+    # TODO: Test this method
+    @staticmethod
+    def dict_to_instance(fleet_service_dict):
+
+        fleet_service_announcer = None
+
+        if 'service_announcer'in fleet_service_dict:
+            fleet_service_announcer = FleetService.dict_to_instance(fleet_service_dict['service_announcer'])
+
+        service_config_details = DynamiteConfig.ServiceStruct.ServiceDetailStruct.dict_to_instance(
+            fleet_service_dict['service_config_details'])
+
+        fleet_service_instance = FleetService(fleet_service_dict['name'],
+                                              path_on_filesystem=fleet_service_dict['path_on_filesystem'],
+                                              unit_file_details_json_dict=fleet_service_dict['unit_file_details_json_dict'],
+                                              service_details_dynamite_config=service_config_details,
+                                              is_template=fleet_service_dict['is_template'],
+                                              service_announcer=fleet_service_announcer)
+
+        return fleet_service_instance
+
     def get_next_port_numbers(self):
         if self.is_template is None:
             return None
@@ -124,6 +145,7 @@ class FleetService(object):
 
         return return_string
 
+
     class FleetServiceInstance(object):
         name = None
         state = None
@@ -144,6 +166,20 @@ class FleetService(object):
 
             return fleet_service_json
 
+        @staticmethod
+        def dict_to_instance(fleet_service_instance_dict):
+
+            fleet_service_instance_announcer = None
+
+            if 'service_announcer'in fleet_service_instance_dict:
+                fleet_service_instance_announcer = FleetService.FleetServiceInstance.dict_to_instance(fleet_service_instance_dict['service_announcer'])
+
+            fleet_service_instance = FleetService.FleetServiceInstance(name=fleet_service_instance_dict['name'],
+                                                                       state=fleet_service_instance_dict['state'],
+                                                                       service_announcer=fleet_service_instance_announcer)
+
+            return fleet_service_instance
+
         def __init__(self, name, state, service_announcer=None):
             self.name = name
 
@@ -156,7 +192,14 @@ class FleetService(object):
                     isinstance(service_announcer, FleetService.FleetServiceInstance):
                 self.service_announcer = service_announcer
 
+        def __str__(self):
+            return_string = "FleetServiceInstance Instance:\n" \
+                            "\t<Instance Variables>\n"
 
+            for (instance_variable_name, value) in self.__dict__.items():
+                return_string += "\t\tName: " + instance_variable_name + ", Type: " + str(type(value)) + "\n"
+
+            return return_string
 
 if __name__ == '__main__':
 

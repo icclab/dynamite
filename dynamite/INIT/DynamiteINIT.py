@@ -48,7 +48,7 @@ class DynamiteINIT(object):
         self.dynamite_config = DynamiteConfig(arg_config_path=arg_config_path,
                                               arg_service_folder_list=arg_service_folder)
 
-        self.dynamite_service_handler = DynamiteServiceHandler(self.dynamite_config)
+        self.dynamite_service_handler = DynamiteServiceHandler(dynamite_config=self.dynamite_config)
 
         # save dynamite yaml config to etcd - this will be loaded if dynamite should crash and restart
         dynamite_config_yaml = self.dynamite_config.dynamite_yaml_config
@@ -77,11 +77,13 @@ class DynamiteINIT(object):
 
                     del fleet_service_dict['fleet_service_instances'][fleet_service_instance_name]
 
-            etcd_template_key = etcd_base_key + "/" + "template"
+            etcd_template_key = etcd_base_key + "/" + ETCDCTL.etcd_name_fleet_service_template
             self.etcdctl.write(etcd_template_key, json.dumps(fleet_service_dict))
 
     def recover_dynamite(self, etcd_endpoint):
         self.dynamite_config = DynamiteConfig(etcd_endpoint=etcd_endpoint)
+        self.dynamite_service_handler = DynamiteServiceHandler(dynamite_config=self.dynamite_config,
+                                                               etcd_endpoint=etcd_endpoint)
 
 
     def __init__(self, arg_config_path, arg_service_folder, arg_etcd_endpoint):

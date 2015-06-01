@@ -98,36 +98,6 @@ if __name__ == '__main__':
 
     dynamite_init = DynamiteINIT(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER, ARG_ETCD_ENDPOINT)
 
-    # dynamite_init.set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.NONE)
-
     input("wait")
 
-    print(dynamite_init.dynamite_config.Service.a.min_instance)
-    # dynamite_init.dynamite_service_handler.destroy_all_services()
-
-    # dynamite_application_status = DynamiteHelper.check_dynamite_application_status()
-    # print(dynamite_application_status)
-
-    # Create DynamiteConfig object to interact with loaded Dynamite YAML Configuration
-
-# ########################
-#     dynamite_config = DynamiteConfig(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER)
-#
-#     dynamite_service_handler = DynamiteServiceHandler(dynamite_config)
-# ########################
-
-
-    #print(ARG_ETCD_ENDPOINT)
-    # input("click to add a new 'a' service...")
-    # dynamite_service_handler.add_new_fleet_service_instance("a")
-
-# ########################
-#     input("click to remove <a@12021.service> ...")
-#
-#     dynamite_service_handler.remove_fleet_service_instance("a@12021.service")
-#
-#     input("click to add a new 'a' service...")
-#     dynamite_service_handler.add_new_fleet_service_instance("a")
-#
-    # input("click to destroy all services...")
-    # dynamite_service_handler.destroy_all_services()
+    print(dynamite_init.dynamite_config.Service.a.max_instance)

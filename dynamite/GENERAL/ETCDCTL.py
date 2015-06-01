@@ -16,7 +16,7 @@ is_connected = None
 etcd_key_application_status = "/_dynamite/state/application_status"
 etcd_key_init_application_configuration = "_dynamite/init/application_configuration"
 etcd_key_running_services = "_dynamite/run/service"
-
+etcd_name_fleet_service_template = "fleet_service_template"
 
 def test_connection(etcd_base_url):
     global is_connected
