@@ -22,19 +22,6 @@ class DYNAMITE_APPLICATION_STATUS(object):
     ALLOWED_VALUES = [None, "Initializing", "Running", "Recovering", "Dead"]
 
 
-# def check_dynamite_application_status():
-#     etcdctl = ETCDCTL("127.0.0.1", "4001").get_etcdctl()
-#
-#     try:
-#         key = "/_dynamite/application_status"
-#         res = etcdctl.read(key)
-#
-#         if res.value in DYNAMITE_APPLICATION_STATUS.ALLOWED_VALUES:
-#             return res.value
-#     except etcd.EtcdKeyNotFound:
-#         return DYNAMITE_APPLICATION_STATUS.NONE
-
-
 if __name__ == '__main__':
 
     path_to_config_file = "..\\tests\\TEST_CONFIG_FOLDER\\config.yaml"

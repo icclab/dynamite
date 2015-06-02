@@ -64,12 +64,19 @@ class FleetService(object):
         service_config_details = DynamiteConfig.ServiceStruct.ServiceDetailStruct.dict_to_instance(
             fleet_service_dict['service_config_details'])
 
+        if 'used_port_numbers' in fleet_service_dict:
+            used_port_numbers = fleet_service_dict['used_port_numbers']
+        else:
+            used_port_numbers = None
+
         fleet_service_instance = FleetService(fleet_service_dict['name'],
                                               path_on_filesystem=fleet_service_dict['path_on_filesystem'],
                                               unit_file_details_json_dict=fleet_service_dict['unit_file_details_json_dict'],
                                               service_details_dynamite_config=service_config_details,
                                               is_template=fleet_service_dict['is_template'],
-                                              service_announcer=fleet_service_announcer)
+                                              service_announcer=fleet_service_announcer,
+                                              used_port_numbers=used_port_numbers)
+
 
         return fleet_service_instance
 
@@ -82,7 +89,7 @@ class FleetService(object):
 
         # All ports already used
         if 0 not in self.used_port_numbers:
-            return None
+            return -1
 
         next_ports_to_use = []
         ports_per_instance = self.service_config_details.ports_per_instance
@@ -101,7 +108,8 @@ class FleetService(object):
                  unit_file_details_json_dict=None,
                  service_details_dynamite_config=None,
                  is_template=None,
-                 service_announcer=None):
+                 service_announcer=None,
+                 used_port_numbers=None):
 
         # add a check for the variables (if None, path exists, etc)
         self.name = name
@@ -129,7 +137,10 @@ class FleetService(object):
             self.is_template = is_template
 
         if is_template and self.service_config_details.type != "service_announcer":
-            self.used_port_numbers = [0] * self.service_config_details.max_instance * self.service_config_details.ports_per_instance
+            if used_port_numbers is not None:
+                self.used_port_numbers = used_port_numbers
+            else:
+                self.used_port_numbers = [0] * self.service_config_details.max_instance * self.service_config_details.ports_per_instance
 
         if service_announcer is not None:
             self.service_announcer = service_announcer

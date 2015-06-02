@@ -189,7 +189,6 @@ class FleetServiceHandler(object):
         else:
             return None
 
-
     # This function expects the parent service / the service definition
     def create_new_fleet_service_instance(self, fleet_service, port_numbers=None, is_announcer=False):
         if fleet_service is None or not isinstance(fleet_service, FleetService):
@@ -259,21 +258,34 @@ class FleetServiceHandler(object):
                 return new_fleet_instance
 
     # TODO: Don't remove more than the defined 'min' of services
-    def remove_fleet_service_instance(self, fleet_service, fleet_service_instance_name):
+    def remove_fleet_service_instance(self, fleet_service):
+
+        # Don't remove more instances than are minimally needed
+        if len(fleet_service.fleet_service_instances) == fleet_service.service_config_details.min_instance:
+            return None
 
         # Remove used port/instance numbers
         if fleet_service.used_port_numbers is not None:
             # e.g a@12021.service --> instance_number = 12021
-            instance_number = fleet_service_instance_name.split("@")
-            instance_number = instance_number[1].split(".")
-            instance_number = int(instance_number[0])
+            # TODO: Get latest instance number. Build up fleet_service_instance_name.
+            try:
+                instance_number_index = fleet_service.used_port_numbers.index(0)
+                instance_number = fleet_service.used_port_numbers[instance_number_index - 1]
+                instance_name = fleet_service.name + "@" + str(instance_number) + ".service"
+            except ValueError:
+                instance_number = fleet_service.used_port_numbers[-1]
+                instance_name = fleet_service.name + "@" + str(instance_number) + ".service"
 
-        fleet_service_instance = fleet_service.fleet_service_instances[fleet_service_instance_name]
+        fleet_service_instance = fleet_service.fleet_service_instances[instance_name]
 
         for i in range(fleet_service.service_config_details.ports_per_instance):
             fleet_service.used_port_numbers[fleet_service.used_port_numbers.index(instance_number+i)] = 0
 
         self.destroy(fleet_service_instance)
+
+        del fleet_service.fleet_service_instances[instance_name]
+
+        return instance_name
 
     def __init__(self, ip, port):
 

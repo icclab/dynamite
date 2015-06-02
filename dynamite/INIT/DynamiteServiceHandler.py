@@ -226,18 +226,50 @@ class DynamiteServiceHandler(object):
 
             if new_fleet_service_instance is not None:
                 self.FleetServiceHandler.start(fleet_service, new_fleet_service_instance)
+
+            # save the updated fleet service into etcd (this is mainly done here to save the updated used_port_numbers
+            # into etcd so that when dynamite restarts it handles those correctly
+                self.save_fleet_service_state_to_etcd(fleet_service)
+
+                fleet_service_instance_dict = new_fleet_service_instance.to_dict()
+                fleet_service_instance_json = json.dumps(fleet_service_instance_dict)
+                fleet_service_instance_name = fleet_service_instance_dict['name']
+                etcd_instance_key = ETCDCTL.etcd_key_running_services + "/" + fleet_service.name + "/" + fleet_service_instance_name
+
+                etcdctl = ETCDCTL.get_etcdctl()
+                etcdctl.write(etcd_instance_key, fleet_service_instance_json)
         else:
             return None
 
-    def remove_fleet_service_instance(self, fleet_service_instance_name):
+    def remove_fleet_service_instance(self, fleet_service_name):
         fleet_service_handler = self.FleetServiceHandler
         fleet_service_dict = self.FleetServiceDict
 
         for service_name, fleet_service in fleet_service_dict.items():
-            if fleet_service_instance_name in fleet_service.fleet_service_instances:
-                return fleet_service_handler.remove_fleet_service_instance(fleet_service, fleet_service_instance_name)
+            if fleet_service.name == fleet_service_name:
+                name_of_deleted_fleet_service = fleet_service_handler.remove_fleet_service_instance(fleet_service)
+                self.save_fleet_service_state_to_etcd(fleet_service)
+
+                # TODO remove the deleted fleet service instance from etcd
+                if name_of_deleted_fleet_service is not None:
+                    etcd_instance_key = ETCDCTL.etcd_key_running_services + "/" + fleet_service.name + "/" + name_of_deleted_fleet_service
+
+                    etcdctl = ETCDCTL.get_etcdctl()
+                    etcdctl.delete(etcd_instance_key)
+
 
         return None
+
+    def save_fleet_service_state_to_etcd(self, fleet_service):
+
+        etcdctl = ETCDCTL.get_etcdctl()
+        etcd_key = ETCDCTL.etcd_key_running_services + "/" + fleet_service.name + "/" + ETCDCTL.etcd_name_fleet_service_template
+
+        fleet_service_dict = fleet_service.to_dict()
+        fleet_service_dict['fleet_service_instances'] = {}
+        fleet_service_dict_json = json.dumps(fleet_service_dict)
+        etcdctl.write(etcd_key, fleet_service_dict_json)
+
 
     # This is only the case when the config was created from a file on the filesystem
     def create_fleet_service_dict_from_dynamite_config_object(self, dynamite_config):
@@ -272,14 +304,11 @@ class DynamiteServiceHandler(object):
                 instance_name = service_path_parts[-1]
 
                 if instance_name == "fleet_service_template":
-                    # TODO: create FleetService
+                    #print(service.value)
                     value = json.loads(service.value)
                     fleet_service = FleetService.dict_to_instance(value)
                     fleet_service_dict[fleet_service.name] = fleet_service
-                    #print(fleet_service.name)
-                    #print(value['service_announcer'])
                 else:
-                    # TODO: create FleetServiceInstance
                     value = json.loads(service.value)
                     fleet_service_instance = FleetService.FleetServiceInstance.dict_to_instance(value)
                     fleet_service_instance_list.append(fleet_service_instance)
@@ -326,20 +355,3 @@ if __name__ == '__main__':
     service_handler = DynamiteServiceHandler(dynamite_config)
 
     service_handler.add_new_fleet_service_instance("a")
-
-    # print(service_handler.FleetServiceDict)
-    # print(service_handler.FleetServiceDict['a'].fleet_service_instances["a@12021.service"])
-    # print(service_handler.FleetServiceDict['a'].fleet_service_instances["a@12021.service"].state)
-
-    # for service_name, fleet_service_instance in service_handler.FleetServiceDict.items():
-    #     print(service_name)
-    #     print(fleet_service_instance.service_config_details.name_of_unit_file)
-
-    #print(service_handler.FleetServiceDict)
-
-    #print(service_handler.ServiceJSONObjectDict['a_service_announcer@.service'])
-    # this should be called from within the DynamiteServiceHandler!
-    #fleet = FleetServiceHandler(dynamite_config.FleetAPIEndpoint.ip, str(dynamite_config.FleetAPIEndpoint.port))
-
-    #fleet.submit('example.service', service_handler.ServiceJSONObjectDict['example.service'])
-    #fleet.destroy('example.service')

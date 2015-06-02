@@ -98,6 +98,15 @@ if __name__ == '__main__':
 
     dynamite_init = DynamiteINIT(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER, ARG_ETCD_ENDPOINT)
 
-    input("wait")
+    # input("wait. click to add 'a' service")
 
-    print(dynamite_init.dynamite_config.Service.a.max_instance)
+    for i in range(4):
+        dynamite_init.dynamite_service_handler.add_new_fleet_service_instance("a")
+
+    # input("wait. click to remove 'a' service")
+
+    # for i in range(4):
+    #     dynamite_init.dynamite_service_handler.remove_fleet_service_instance("a")
+
+    # print("hal")
+    # input("wait. click to end")

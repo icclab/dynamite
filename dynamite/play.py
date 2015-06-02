@@ -8,20 +8,17 @@ import platform
 import yaml
 import json
 import requests
+import etcd
 
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
 from dynamite.INIT.DynamiteServiceHandler import DynamiteServiceHandler
+from intervaltree import Interval, IntervalTree
+from dynamite.GENERAL.FleetService import FleetService
 
-class test(object):
-    x = 18
-    y = 13
+from dynamite.GENERAL import ETCDCTL
 
-if __name__ == '__main__':
+# TODO: get all the running services from etcd
+etcdctl = ETCDCTL.create_etcdctl("127.0.0.1:4001")
 
-    # cwd = os.path.abspath(os.path.dirname(__file__))
-    # print(cwd)
-
-    x = "1"
-
-    if not isinstance(x, str):
-        print("hossa")
+for i in range(3):
+    print(i+1)
