@@ -257,7 +257,6 @@ class FleetServiceHandler(object):
 
                 return new_fleet_instance
 
-    # TODO: Don't remove more than the defined 'min' of services
     def remove_fleet_service_instance(self, fleet_service):
 
         # Don't remove more instances than are minimally needed

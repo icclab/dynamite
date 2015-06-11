@@ -5,6 +5,9 @@ import argparse
 import os
 import platform
 import json
+import pika
+import time
+from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
 
 # The following is only for usage of this application from the command-line
 # And only during development
@@ -24,10 +27,15 @@ DYNAMITE_ENVIRONMENT = os.getenv('DYNAMITE_ENVIRONMENT', DYNAMITE_ENVIRONMENT_ST
 DEFAULT_CONFIG_PATH=None
 DEFAULT_SERVICE_FOLDER=None
 DEFAULT_ETCD_ENDPOINT="127.0.0.1:4001"
+DEFAULT_RABBITMQ_ENDPOINT="127.0.0.1:5672"
 
 ARG_CONFIG_PATH=None
 ARG_SERVICE_FOLDER=None
 ARG_ETCD_ENDPOINT=None
+ARG_RABBITMQ_ENDPOINT=None
+
+RABBITMQ_SCALING_REQUEST_QUEUE_NAME="dynamite_scaling_request"
+RABBITMQ_SCALING_RESPONSE_QUEUE_NAME="dynamite_scaling_response"
 
 def init_env():
     global DEFAULT_CONFIG_PATH
@@ -49,6 +57,7 @@ def init_arguments():
     global ARG_CONFIG_PATH
     global ARG_SERVICE_FOLDER
     global ARG_ETCD_ENDPOINT
+    global ARG_RABBITMQ_ENDPOINT
 
     parser = argparse.ArgumentParser()
 
@@ -67,11 +76,18 @@ def init_arguments():
                         nargs='?',
                         default=DEFAULT_ETCD_ENDPOINT)
 
+    parser.add_argument("--rabbitmq_endpoint", "-r",
+                        help="Define Rabbit-MQ Endpoint [IP]:[PORT]. Default: " + DEFAULT_RABBITMQ_ENDPOINT,
+                        nargs='?',
+                        default=DEFAULT_RABBITMQ_ENDPOINT)
+
     args = parser.parse_args()
 
     ARG_ETCD_ENDPOINT = args.etcd_endpoint
 
     ARG_CONFIG_PATH = args.config_file
+
+    ARG_RABBITMQ_ENDPOINT = args.rabbitmq_endpoint
 
     # Test if Config-File exists. If not, terminate application
     if not os.path.exists(ARG_CONFIG_PATH):
@@ -92,8 +108,46 @@ def init_arguments():
             ARG_SERVICE_FOLDER.append(os.path.abspath(service_file_folder))
 
 
+def create_rabbit_mq_queues(rabbit_mq_endpoint):
+
+    ip_port = rabbit_mq_endpoint.split(":")
+    rabbit_mq_endpoint_host = ip_port[0]
+    rabbit_mq_endpoint_port = int(ip_port[1])
+
+    rabbit_mq_connection_parameters = pika.ConnectionParameters(host=rabbit_mq_endpoint_host,
+                                                                port=rabbit_mq_endpoint_port)
+
+    connection = pika.BlockingConnection(rabbit_mq_connection_parameters)
+
+    channel = connection.channel()
+    channel.queue_declare(queue=RABBITMQ_SCALING_REQUEST_QUEUE_NAME, durable=True)
+    channel.queue_declare(queue=RABBITMQ_SCALING_RESPONSE_QUEUE_NAME, durable=True)
+
+    connection.close()
+
+
 if __name__ == '__main__':
     init_env()
     init_arguments()
 
     dynamite_init = DynamiteINIT(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER, ARG_ETCD_ENDPOINT)
+
+    # for i in range(4):
+    #     dynamite_init.dynamite_service_handler.add_new_fleet_service_instance("a")
+
+    create_rabbit_mq_queues(ARG_RABBITMQ_ENDPOINT)
+
+    # create DynamiteExecutor Process
+    dynamite_executor = DynamiteEXECUTOR(rabbit_mq_endpoint=ARG_RABBITMQ_ENDPOINT,
+                                         etcd_endpoint=ARG_ETCD_ENDPOINT,
+                                         name_scaling_request_queue=RABBITMQ_SCALING_REQUEST_QUEUE_NAME,
+                                         name_scaling_response_queue=RABBITMQ_SCALING_RESPONSE_QUEUE_NAME)
+
+    dynamite_executor.start()
+
+    running = True
+
+    while running:
+        time.sleep(5)
+        dynamite_executor.terminate()
+        running = False

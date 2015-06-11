@@ -2,3 +2,4 @@ pyyaml
 requests
 intervaltree
 python-etcd
+python3-pika
