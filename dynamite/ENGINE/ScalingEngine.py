@@ -8,15 +8,18 @@ from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
 from dynamite.ENGINE.RunningServicesRegistry import RunningServicesRegistry
 
 class ScalingEngine(object):
-    def __init__(self):
+    def __init__(self, services_dictionary):
         self._metrics_receiver = MetricsReceiver()
         self._metrics = ScalingMetrics()
         self._rule_checker = RuleChecker()
         self._executed_tasks_receiver = ExecutedTaskReceiver()
         self._scaling_action_sender = ScalingActionSender()
         self._running_services_registry = RunningServicesRegistry()
+        self._services_dictionary = services_dictionary
 
     def start(self):
+        self._running_services_registry.initialize_from_service_dictionary(self._services_dictionary)
+
         while True:
             # get metrics from etcd queue
             metrics_message = self._metrics_receiver.receive_metrics()
@@ -28,7 +31,7 @@ class ScalingEngine(object):
             scaling_actions = self._rule_checker.check(self._metrics)
 
             # convert uuid to service name
-            service_name = self._convert_uuid_to_service_name()
+            service_name = self._convert_uuid_to_service_name("uuid")
 
             for scaling_action in scaling_actions:
                 # write action to rabbitmq queue if needed

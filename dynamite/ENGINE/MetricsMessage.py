@@ -4,7 +4,7 @@ class MetricsMessage(object):
     def __init__(self, service_name, uuid, metric_values, metric_name):
         self._service_name = service_name
         self._uuid = uuid
-        self._metric_values = metric_values
+        self._metric_values = metric_values or []
         self._metric_name = metric_name
 
     @staticmethod

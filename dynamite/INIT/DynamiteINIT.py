@@ -34,7 +34,6 @@ class DynamiteINIT(object):
         except etcd.EtcdKeyNotFound:
             return DYNAMITE_APPLICATION_STATUS.NONE
 
-
     def set_dynamite_application_status_etcd(self, dynamite_application_state):
         if dynamite_application_state in DYNAMITE_APPLICATION_STATUS.ALLOWED_VALUES:
             key = ETCDCTL.etcd_key_application_status
@@ -42,7 +41,6 @@ class DynamiteINIT(object):
             return res
         else:
             return None
-
 
     def init_dynamite(self, arg_config_path, arg_service_folder, init_failed=False):
         self.set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.INITIALIZING)

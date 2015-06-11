@@ -8,4 +8,4 @@ class MetricsReceiver(object):
 
     def receive_metrics(self):
         # TODO: implement receiving metrics
-        return MetricsMessage()
+        return MetricsMessage(None, None, None, None)
