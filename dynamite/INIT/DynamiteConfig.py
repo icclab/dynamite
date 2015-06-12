@@ -194,7 +194,11 @@ class DynamiteConfig(object):
         def __init__(self, ScalingPolicyDict):
             if(type(ScalingPolicyDict) == type({})):
                 for (service_name, service_detail_dict) in ScalingPolicyDict.items():
-                    setattr(self, service_name, DynamiteConfig.ScalingPolicyStruct.ScalingPolicyDetailStruct(service_name, service_detail_dict))
+                    setattr(
+                        self,
+                        service_name,
+                        DynamiteConfig.ScalingPolicyStruct.ScalingPolicyDetailStruct(service_name, service_detail_dict)
+                    )
 
         def __str__(self):
             return_string = "ServicePolicy Struct:\n" \
@@ -204,6 +208,13 @@ class DynamiteConfig(object):
                 return_string += "\t\tName: " + instance_variable_name + ", Type: " + str(type(value)) + "\n"
 
             return return_string
+
+        # do not make a property out of this, this would break the logic creating variables for each policy
+        def get_scaling_policies(self):
+            scaling_policies = []
+            for (instance_variable_name, value) in self.__dict__.items():
+                scaling_policies.append(value)
+            return scaling_policies
 
     # Converts YAML Config to Python Dictionary
     def load_config_file(self, path_to_config_file):

@@ -4,16 +4,21 @@ import sys
 import argparse
 import os
 import platform
-import json
+from dynamite.ENGINE.ScalingEngine import ScalingEngine
+from dynamite.GENERAL.MetricsReceiver import MetricsReceiver
+from multiprocessing import Queue
+from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguration
+
+WORKING_DIRECTORY = 'C:\\Projects\\CNA\\dynamite'
 
 # The following is only for usage of this application from the command-line
 # And only during development
 # The application should later be installed via setup.py
-if 'C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite' not in sys.path:
-    sys.path.append('C:\\Users\\brnr\\PycharmProjects\\dynamite\\dynamite')
+if WORKING_DIRECTORY not in sys.path:
+    sys.path.append(WORKING_DIRECTORY)
 
-if 'C:\\Users\\brnr\\PycharmProjects\\dynamite' not in sys.path:
-    sys.path.append('C:\\Users\\brnr\\PycharmProjects\\dynamite')
+if WORKING_DIRECTORY not in sys.path:
+    sys.path.append(WORKING_DIRECTORY)
 
 from dynamite.GENERAL.DynamiteHelper import DYNAMITE_ENVIRONMENT_STRUCT
 from dynamite.GENERAL.DynamiteHelper import DYNAMITE_APPLICATION_STATUS
@@ -97,3 +102,12 @@ if __name__ == '__main__':
     init_arguments()
 
     dynamite_init = DynamiteINIT(ARG_CONFIG_PATH, ARG_SERVICE_FOLDER, ARG_ETCD_ENDPOINT)
+
+    scaling_engine_config = ScalingEngineConfiguration()
+    scaling_engine_metrics_communication_queue = Queue()
+    scaling_engine_config.metrics_receiver = MetricsReceiver(scaling_engine_metrics_communication_queue)
+    scaling_engine_config.fleet_service_dict = dynamite_init.dynamite_service_handler.FleetServiceDict
+    scaling_engine_config.scaling_policies = dynamite_init.dynamite_config.ScalingPolicy.get_scaling_policies()
+
+    scaling_engine = ScalingEngine(scaling_engine_config)
+    scaling_engine.start()

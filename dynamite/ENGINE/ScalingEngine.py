@@ -1,6 +1,5 @@
 __author__ = 'bloe'
 
-from dynamite.ENGINE.MetricsReceiver import MetricsReceiver
 from dynamite.ENGINE.ScalingMetrics import ScalingMetrics
 from dynamite.ENGINE.RuleChecker import RuleChecker
 from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
@@ -8,14 +7,14 @@ from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
 from dynamite.ENGINE.RunningServicesRegistry import RunningServicesRegistry
 
 class ScalingEngine(object):
-    def __init__(self, services_dictionary):
-        self._metrics_receiver = MetricsReceiver()
+    def __init__(self, configuration):
+        self._metrics_receiver = configuration.metrics_receiver
         self._metrics = ScalingMetrics()
-        self._rule_checker = RuleChecker()
+        self._rule_checker = RuleChecker(configuration.scaling_policies)
         self._executed_tasks_receiver = ExecutedTaskReceiver()
         self._scaling_action_sender = ScalingActionSender()
         self._running_services_registry = RunningServicesRegistry()
-        self._services_dictionary = services_dictionary
+        self._services_dictionary = configuration.services_dictionary
 
     def start(self):
         self._running_services_registry.initialize_from_service_dictionary(self._services_dictionary)
