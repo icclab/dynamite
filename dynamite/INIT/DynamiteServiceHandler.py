@@ -241,16 +241,17 @@ class DynamiteServiceHandler(object):
         else:
             return None
 
-    def remove_fleet_service_instance(self, fleet_service_name):
+    def remove_fleet_service_instance(self, fleet_service_name, fleet_service_instance_name=None):
         fleet_service_handler = self.FleetServiceHandler
         fleet_service_dict = self.FleetServiceDict
 
         for service_name, fleet_service in fleet_service_dict.items():
             if fleet_service.name == fleet_service_name:
-                name_of_deleted_fleet_service = fleet_service_handler.remove_fleet_service_instance(fleet_service)
+                name_of_deleted_fleet_service = fleet_service_handler.remove_fleet_service_instance(fleet_service,
+                                                                                                    fleet_service_instance_name)
                 self.save_fleet_service_state_to_etcd(fleet_service)
 
-                # TODO remove the deleted fleet service instance from etcd
+                # remove the deleted fleet service instance from etcd
                 if name_of_deleted_fleet_service is not None:
                     etcd_instance_key = ETCDCTL.etcd_key_running_services + "/" + fleet_service.name + "/" + name_of_deleted_fleet_service
 
