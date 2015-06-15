@@ -19,6 +19,9 @@ class ScalingMetric:
     def add_value(self, metric_value):
         self._values.append(metric_value)
 
+    def get_all_values(self):
+        return self._values
+
     metric_name = ""
 
 class ScalingMetricInstance:
@@ -33,6 +36,9 @@ class ScalingMetricInstance:
             raise ValueError(
                 "metric {} already exists in instance {}!".format(scaling_metric.metric_name, self.instance_uuid)
             )
+
+    def get_all_metrics(self):
+        return self._metrics.values()
 
     def metric_exists(self, metric_name):
         return metric_name in self._metrics
@@ -52,6 +58,9 @@ class ScalingMetricService:
             self._instances[instance.uuid] = instance
         else:
             raise ValueError("instance {} already exists!".format(instance.uuid))
+
+    def get_all_instances(self):
+        return self._instances.values()
 
     def get_instance(self, instance_uuid):
         return self._instances[self.instance.uuid]
@@ -104,6 +113,9 @@ class ScalingMetrics:
             for timestamp, value in metric_timestamped_value.items():
                 scaling_metric_value = ScalingMetricValue(timestamp, value)
                 scaling_metric.add_value(scaling_metric_value)
+
+    def get_all_metric_services(self):
+        return self._metrics_of_service.values()
 
     def cleanup_old_metrics(self, older_than_seconds):
         # TODO: implement delete of old metrics
