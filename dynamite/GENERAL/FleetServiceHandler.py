@@ -257,7 +257,11 @@ class FleetServiceHandler(object):
 
                 return new_fleet_instance
 
-    def remove_fleet_service_instance(self, fleet_service):
+    def remove_fleet_service_instance(self, fleet_service, fleet_service_instance_name=None):
+
+        if not isinstance(fleet_service, FleetService):
+            raise IllegalArgumentError("Error: argument <fleet_service> needs to be of type "
+                                       "dynamite.GENERAL.FleetService")
 
         # Don't remove more instances than are minimally needed
         if len(fleet_service.fleet_service_instances) == fleet_service.service_config_details.min_instance:
@@ -266,14 +270,23 @@ class FleetServiceHandler(object):
         # Remove used port/instance numbers
         if fleet_service.used_port_numbers is not None:
             # e.g a@12021.service --> instance_number = 12021
-            # TODO: Get latest instance number. Build up fleet_service_instance_name.
-            try:
-                instance_number_index = fleet_service.used_port_numbers.index(0)
-                instance_number = fleet_service.used_port_numbers[instance_number_index - 1]
-                instance_name = fleet_service.name + "@" + str(instance_number) + ".service"
-            except ValueError:
-                instance_number = fleet_service.used_port_numbers[-1]
-                instance_name = fleet_service.name + "@" + str(instance_number) + ".service"
+
+            if fleet_service_instance_name is not None:
+                instance_name = fleet_service_instance_name
+
+                instance_number = instance_name.split("@")
+                instance_number = instance_number[1].split(".")
+                instance_number = int(instance_number[0])
+
+            else:
+                # TODO: Get latest instance number. Build up fleet_service_instance_name.
+                try:
+                    instance_number_index = fleet_service.used_port_numbers.index(0)
+                    instance_number = fleet_service.used_port_numbers[instance_number_index - 1]
+                    instance_name = fleet_service.name + "@" + str(instance_number) + ".service"
+                except ValueError:
+                    instance_number = fleet_service.used_port_numbers[-1]
+                    instance_name = fleet_service.name + "@" + str(instance_number) + ".service"
 
         fleet_service_instance = fleet_service.fleet_service_instances[instance_name]
 

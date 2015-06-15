@@ -20,5 +20,7 @@ from dynamite.GENERAL import ETCDCTL
 # TODO: get all the running services from etcd
 etcdctl = ETCDCTL.create_etcdctl("127.0.0.1:4001")
 
-for i in range(3):
-    print(i+1)
+x = False
+
+if isinstance(x, bool):
+    print("hossa")
