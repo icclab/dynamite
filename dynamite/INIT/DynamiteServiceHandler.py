@@ -238,6 +238,8 @@ class DynamiteServiceHandler(object):
 
                 etcdctl = ETCDCTL.get_etcdctl()
                 etcdctl.write(etcd_instance_key, fleet_service_instance_json)
+            else:
+                return None
         else:
             return None
 
