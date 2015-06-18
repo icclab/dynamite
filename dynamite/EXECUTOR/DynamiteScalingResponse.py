@@ -2,7 +2,7 @@ __author__ = 'brnr'
 
 from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
 from dynamite.EXECUTOR.DynamiteScalingRequest import DynamiteScalingRequest
-
+import json
 
 class DynamiteScalingResponse(object):
 
@@ -11,6 +11,16 @@ class DynamiteScalingResponse(object):
     service_instance_name = None
     failure_counter = None
     success = None
+
+    def to_json_string(self):
+        instance_dict = {}
+
+        for variable, value in self.__dict__.items():
+            instance_dict[variable] = value
+
+        json_string = json.dumps(instance_dict)
+
+        return json_string
 
     def __init__(self, dynamite_scaling_request, success):
 
