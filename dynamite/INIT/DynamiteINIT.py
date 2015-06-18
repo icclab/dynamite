@@ -24,7 +24,7 @@ class DynamiteINIT(object):
         else:
             return None
 
-    def check_dynamite_application_status_etcd(self):
+    def _check_dynamite_application_status_etcd(self):
         try:
             key = ETCDCTL.etcd_key_application_status
             res = self.etcdctl.read(key)
@@ -122,7 +122,7 @@ class DynamiteINIT(object):
         self.etcdctl = self.init_etcdctl(arg_etcd_endpoint)
 
         if self.etcdctl is not None:
-            dynamite_application_status = self.check_dynamite_application_status_etcd()
+            dynamite_application_status = self._check_dynamite_application_status_etcd()
 
         if dynamite_application_status is None:
             self.init_dynamite(arg_config_path, arg_service_folder)

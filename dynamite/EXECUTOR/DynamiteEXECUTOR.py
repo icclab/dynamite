@@ -52,22 +52,23 @@ class DynamiteEXECUTOR(Process):
                                                                etcd_endpoint=etcd_endpoint)
 
     def _scaling_request_received(self, ch, method, properties, body):
-        # TODO: get the request and do some cool stuff (ok, just scale up or down)
+
         received_scaling_request_string = body.decode("utf-8")
 
         scaling_request = DynamiteScalingRequest(received_scaling_request_string)
 
         if scaling_request.command == DynamiteScalingCommand.SCALE_UP:
             service_name = scaling_request.service_name
-            print("scaling up: " + service_name)
-            # self.dynamite_service_handler.add_new_fleet_service_instance(service_name)
+            self.dynamite_service_handler.add_new_fleet_service_instance(service_name)
+            # print("scaling up: " + service_name)
         elif scaling_request.command == DynamiteScalingCommand.SCALE_DOWN:
+            service_name = scaling_request.service_name
             service_instance_name = scaling_request.service_instance_name
-            print("scaling down: " + service_instance_name)
-            # TODO implement functionality to remove specific fleet service instance
-            #self.dynamite_service_handler.remove_fleet_service_instance(service_instance_name)
+            self.dynamite_service_handler.remove_fleet_service_instance(service_name, service_instance_name)
+            # print("scaling down: " + service_name + " " + service_instance_name)
 
         # TODO: send the response (failure/success) to the response queue
+        # if response = None --> Failure
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -84,7 +85,6 @@ class DynamiteEXECUTOR(Process):
                               no_ack=False)
 
         channel.start_consuming()
-        scaling_request = {}
 
     def __init__(self,
                  rabbit_mq_endpoint=None,
