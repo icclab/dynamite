@@ -11,6 +11,7 @@ from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
 
 import logging
 import pika
+import atexit
 
 
 # DynamiteExecutor is a Process which reads scaling request from a rabbitmq queue and creates or deletes fleet-services
@@ -24,6 +25,8 @@ class DynamiteEXECUTOR(Process):
     name_scaling_request_queue = "dynamite_scaling_request"
     name_scaling_response_queue = "dynamite_scaling_response"
 
+    rabbit_mq_connection = None
+    rabbit_mq_channel = None
     rabbit_mq_endpoint = "127.0.0.1:5672"
     rabbit_mq_endpoint_host = None
     rabbit_mq_endpoint_port = None
@@ -31,7 +34,7 @@ class DynamiteEXECUTOR(Process):
     etcd_endpoint = "127.0.0.1:4001"
 
     dynamite_executor_parameters = None
-    rabbit_mq_connection = None
+
 
     def _create_rabbit_mq_connection(self):
         rabbit_mq_host = self.rabbit_mq_endpoint_host
@@ -42,10 +45,12 @@ class DynamiteEXECUTOR(Process):
 
         self.rabbit_mq_connection = pika.BlockingConnection(rabbit_mq_connection_parameters)
 
+    def _close_rabbit_mq_connection(self):
+        if self.rabbit_mq_connection:
+            self.rabbit_mq_connection.close()
 
     def _create_dynamite_config(self, etcd_endpoint):
         self.dynamite_config = DynamiteConfig(etcd_endpoint=etcd_endpoint)
-
 
     def _create_dynamite_service_handler(self, dynamite_config, etcd_endpoint):
         self.dynamite_service_handler = DynamiteServiceHandler(dynamite_config=dynamite_config,
@@ -57,20 +62,35 @@ class DynamiteEXECUTOR(Process):
 
         scaling_request = DynamiteScalingRequest(received_scaling_request_string)
 
+        response = None
         if scaling_request.command == DynamiteScalingCommand.SCALE_UP:
             service_name = scaling_request.service_name
-            self.dynamite_service_handler.add_new_fleet_service_instance(service_name)
-            # print("scaling up: " + service_name)
+            response = self.dynamite_service_handler.add_new_fleet_service_instance(service_name)
         elif scaling_request.command == DynamiteScalingCommand.SCALE_DOWN:
             service_name = scaling_request.service_name
             service_instance_name = scaling_request.service_instance_name
-            self.dynamite_service_handler.remove_fleet_service_instance(service_name, service_instance_name)
-            # print("scaling down: " + service_name + " " + service_instance_name)
+            response = self.dynamite_service_handler.remove_fleet_service_instance(service_name, service_instance_name)
 
         # TODO: send the response (failure/success) to the response queue
-        # if response = None --> Failure
+        scaling_success = True if response is not None else False
+
+        scaling_response = DynamiteScalingResponse(scaling_request, scaling_success)
+
+        self._send_scaling_response_to_rabbitmq_response_queue(scaling_response)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    def _send_scaling_response_to_rabbitmq_response_queue(self, scaling_response):
+        if not isinstance(scaling_response, DynamiteScalingResponse):
+            raise IllegalArgumentError("Error: argument <scaling_response needs to be of type "
+                                       "dynamite.EXECUTOR.DynamiteScalingResponse")
+
+        scaling_response_string = scaling_response.to_json_string()
+
+        if self.rabbit_mq_channel:
+            self.rabbit_mq_channel.basic_publish(exchange='',
+                                                 routing_key=self.name_scaling_response_queue,
+                                                 body=scaling_response_string)
 
     def run(self):
         self._create_dynamite_config(self.etcd_endpoint)
@@ -116,6 +136,9 @@ class DynamiteEXECUTOR(Process):
                 self.name_scaling_response_queue = name_scaling_response_queue
             else:
                 raise IllegalArgumentError("Error: argument <name_scaling_response_queue> needs to be of type <str>")
+
+        atexit.register(self._close_rabbit_mq_connection)
+
 
 
 #   Scaling Request

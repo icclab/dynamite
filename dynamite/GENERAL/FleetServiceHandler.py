@@ -191,6 +191,7 @@ class FleetServiceHandler(object):
 
     # This function expects the parent service / the service definition
     def create_new_fleet_service_instance(self, fleet_service, port_numbers=None, is_announcer=False):
+
         if fleet_service is None or not isinstance(fleet_service, FleetService):
             raise ValueError("Error: <fleet_service> argument needs to be of type <dynamite.GENERAL.FleetService>")
 
