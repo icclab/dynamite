@@ -3,3 +3,4 @@ requests
 intervaltree
 python-etcd
 python3-pika
+python-dateutil

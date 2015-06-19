@@ -9,7 +9,7 @@ class TestRunningServicesRegistry:
     service_name_2 = "service2"
 
     def test_initialize_from_service_dictionary(self):
-        registry = RunningServicesRegistry()
+        registry = RunningServicesRegistry(None)
         service1 = FleetService("service1",
                                 path_on_filesystem=None,
                                 unit_file_details_json_dict=None,
@@ -33,7 +33,7 @@ class TestRunningServicesRegistry:
         assert registry.number_of_running_instances_of_service("service2") == 3
 
     def test_add_running_service(self):
-        registry = RunningServicesRegistry()
+        registry = RunningServicesRegistry(None)
         assert registry.number_of_running_instances_of_service(self.service_name_1) == 0
         registry.add_running_service(self.service_name_1)
         assert registry.number_of_running_instances_of_service(self.service_name_1) == 1
@@ -45,7 +45,7 @@ class TestRunningServicesRegistry:
         assert registry.number_of_running_instances_of_service(self.service_name_2) == 1
 
     def test_remove_running_service(self):
-        registry = RunningServicesRegistry()
+        registry = RunningServicesRegistry(None)
         assert registry.number_of_running_instances_of_service(self.service_name_1) == 0
         assert registry.number_of_running_instances_of_service(self.service_name_2) == 0
 

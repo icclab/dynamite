@@ -14,7 +14,7 @@ class ScalingEngine(object):
         self._rule_checker = RuleChecker(configuration.scaling_policies, configuration.services_dictionary)
         self._executed_tasks_receiver = ExecutedTaskReceiver()
         self._scaling_action_sender = ScalingActionSender()
-        self._running_services_registry = RunningServicesRegistry()
+        self._running_services_registry = RunningServicesRegistry(configuration.services_dictionary)
         self._services_dictionary = configuration.services_dictionary
         self._aggregate_metrics = False
         self._service_instance_name_resolver = ServiceInstanceNameResolver()
@@ -34,14 +34,15 @@ class ScalingEngine(object):
             scaling_actions = self._rule_checker.check_and_return_needed_scaling_actions(metrics_message)
 
             for scaling_action in scaling_actions:
-                # convert uuid to service name
-                scaling_action.service_instance_name = self._service_instance_name_resolver.resolve(scaling_action.uuid)
-
-            for scaling_action in scaling_actions:
                 # check if scaling_action really should be sent to executor (min/max instances)
+                if self._running_services_registry.scaling_action_allowed(scaling_action):
+                    # convert uuid to service name
+                    scaling_action.service_instance_name = self._service_instance_name_resolver.resolve(scaling_action.uuid)
 
-                # write action to rabbitmq queue if needed
-                self._scaling_action_sender.send_action(scaling_action)
+                    # write action to rabbitmq queue if needed
+                    self._scaling_action_sender.send_action(scaling_action)
+                else:
+                    continue
 
             # check if responses available from executor
             executed_tasks = self._executed_tasks_receiver.receive()

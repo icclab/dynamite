@@ -158,8 +158,9 @@ if __name__ == '__main__':
     scaling_engine_config = ScalingEngineConfiguration()
     scaling_engine_metrics_communication_queue = Queue()
     scaling_engine_config.metrics_receiver = MetricsReceiver(scaling_engine_metrics_communication_queue)
-    scaling_engine_config.fleet_service_dict = dynamite_init.dynamite_service_handler.FleetServiceDict
+    scaling_engine_config.services_dictionary = dynamite_init.dynamite_service_handler.FleetServiceDict
     scaling_engine_config.scaling_policies = dynamite_init.dynamite_config.ScalingPolicy.get_scaling_policies()
 
     scaling_engine = ScalingEngine(scaling_engine_config)
     scaling_engine.start()
+
