@@ -6,8 +6,9 @@ class RunningServicesRegistry(object):
     def __init__(self, services_configuration):
         self._running_services = {}
         self._services_configuration = services_configuration
+        self._initialize_from_service_dictionary(services_configuration)
 
-    def initialize_from_service_dictionary(self, service_dictionary):
+    def _initialize_from_service_dictionary(self, service_dictionary):
         for service_name, service in service_dictionary.items():
             for service_instance in service.fleet_service_instances.items():
                 self.add_running_service(service_name)
@@ -35,6 +36,11 @@ class RunningServicesRegistry(object):
         return self._running_services[service_name]
 
     def scaling_action_allowed(self, scaling_action):
+        if scaling_action.service_name not in self._services_configuration:
+            raise ValueError(
+                "Could not find the service configuration of the service {}".format(scaling_action.service_name)
+            )
+
         self._initialize_running_service_if_not_exists(scaling_action.service_name)
         service = self._services_configuration[scaling_action.service_name]
         scale_allowed_decision_methods = {
