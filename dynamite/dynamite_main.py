@@ -7,6 +7,7 @@ import platform
 
 from dynamite.ENGINE.ScalingEngine import ScalingEngine
 from dynamite.GENERAL.MetricsReceiver import MetricsReceiver
+from dynamite.GENERAL.ServiceEndpoint import ServiceEndpoint
 from multiprocessing import Queue
 from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguration
 
@@ -161,6 +162,9 @@ if __name__ == '__main__':
     scaling_engine_config.services_dictionary = dynamite_init.dynamite_service_handler.FleetServiceDict
     scaling_engine_config.scaling_policies = dynamite_init.dynamite_config.ScalingPolicy.get_scaling_policies()
     scaling_engine_config.etcd_connection = dynamite_init.etcdctl
+    scaling_engine_config.rabbit_mq_endpoint = ServiceEndpoint.from_string(ARG_RABBITMQ_ENDPOINT)
+    scaling_engine_config.scaling_request_queue_name = RABBITMQ_SCALING_REQUEST_QUEUE_NAME
+    scaling_engine_config.scaling_response_queue_name = RABBITMQ_SCALING_RESPONSE_QUEUE_NAME
 
     scaling_engine = ScalingEngine(scaling_engine_config)
     scaling_engine.start()

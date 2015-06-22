@@ -74,7 +74,7 @@ class DynamiteEXECUTOR(Process):
         # TODO: send the response (failure/success) to the response queue
         scaling_success = True if response is not None else False
 
-        scaling_response = DynamiteScalingResponse(scaling_request, scaling_success)
+        scaling_response = DynamiteScalingResponse.from_scaling_request(scaling_request, scaling_success)
 
         self._send_scaling_response_to_rabbitmq_response_queue(scaling_response)
 
