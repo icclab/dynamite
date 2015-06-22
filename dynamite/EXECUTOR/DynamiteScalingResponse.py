@@ -22,17 +22,28 @@ class DynamiteScalingResponse(object):
 
         return json_string
 
-    def __init__(self, dynamite_scaling_request, success):
-
+    @staticmethod
+    def from_scaling_request(scaling_request, success):
         if not isinstance(success, bool):
             raise IllegalArgumentError("Error: argument <success> needs to be of type <bool>")
-
-        if isinstance(dynamite_scaling_request, DynamiteScalingRequest) and dynamite_scaling_request is not None:
-            self.success = success
-            self.command = dynamite_scaling_request.command
-            self.service_name = dynamite_scaling_request.service_name
-            self.service_instance_name = dynamite_scaling_request.service_instance_name
-            self.failure_counter = dynamite_scaling_request.failure_counter
-
-        else:
+        if not isinstance(scaling_request, DynamiteScalingRequest) or scaling_request is None:
             raise IllegalArgumentError("Error: argument <scaling_request_string> needs to be of type <str>")
+
+        scaling_response = DynamiteScalingResponse()
+        scaling_response.success = success
+        scaling_response.command = scaling_request.command
+        scaling_response.service_name = scaling_request.service_name
+        scaling_response.service_instance_name = scaling_request.service_instance_name
+        scaling_response.failure_counter = scaling_request.failure_counter
+        return scaling_response
+
+    @staticmethod
+    def from_json_string(json_string):
+        scaling_response_json = json.loads(json_string)
+        scaling_response = DynamiteScalingResponse()
+        scaling_response.success = scaling_response_json["success"]
+        scaling_response.command = scaling_response_json["command"]
+        scaling_response.service_name = scaling_response_json["service_name"]
+        scaling_response.service_instance_name = scaling_response_json["service_instance_name"]
+        scaling_response.failure_counter = scaling_response_json["failure_counter"]
+        return scaling_response

@@ -9,9 +9,9 @@ class MetricValue:
     def _get_timestamp(self):
         return self._timestamp
 
-    timestamp = property(_getTimestamp)
+    timestamp = property(_get_timestamp)
 
     def _get_value(self):
         return self._value
 
-    value = property(_getValue)
+    value = property(_get_value)

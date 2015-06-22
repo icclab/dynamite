@@ -1,7 +1,7 @@
 __author__ = 'bloe'
 
 from dynamite.EXECUTOR.DynamiteScalingRequest import DynamiteScalingRequest
-from dynamite.ENGINE.ScalingAction import ScalingAction, DynamiteScalingCommand
+from dynamite.ENGINE.ScalingAction import ScalingAction
 from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
 
 class TestDynamiteScalingRequest:
