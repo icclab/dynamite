@@ -5,7 +5,7 @@ from dynamite.ENGINE.RuleChecker import RuleChecker
 from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
 from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
 from dynamite.ENGINE.RunningServicesRegistry import RunningServicesRegistry
-from dynamite.ENGINE.ServiceInstanceNameResolver import ServiceInstanceNameResolver
+from dynamite.ENGINE.ServiceInstanceNameResolver import CachingServiceInstanceNameResolver
 
 class ScalingEngine(object):
     AGGREGATE_METRICS = False
@@ -17,7 +17,7 @@ class ScalingEngine(object):
         self._executed_tasks_receiver = ExecutedTaskReceiver()
         self._scaling_action_sender = ScalingActionSender()
         self._running_services_registry = RunningServicesRegistry(configuration.services_dictionary)
-        self._service_instance_name_resolver = ServiceInstanceNameResolver()
+        self._service_instance_name_resolver = CachingServiceInstanceNameResolver()
 
     def start(self):
         # TODO: start minimal service count
@@ -34,10 +34,10 @@ class ScalingEngine(object):
             scaling_actions = self._rule_checker.check_and_return_needed_scaling_actions(metrics_message)
 
             for scaling_action in scaling_actions:
-                # TODO: check if scaling_action really should be sent to executor (min/max instances)
                 if self._running_services_registry.scaling_action_allowed(scaling_action):
-                    # TODO: convert uuid to service name
-                    scaling_action.service_instance_name = self._service_instance_name_resolver.resolve(scaling_action.uuid)
+                    scaling_action.service_instance_name = self._service_instance_name_resolver.resolve(
+                        scaling_action.uuid
+                    )
 
                     # TODO: write action to rabbitmq queue if needed
                     self._scaling_action_sender.send_action(scaling_action)
