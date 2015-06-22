@@ -164,6 +164,7 @@ class DynamiteConfig(object):
             name = None
             service = None
             metric = None
+            metric_aggregated = None
             comparative_operator = None
             threshold = None
             threshold_unit = None
@@ -176,6 +177,7 @@ class DynamiteConfig(object):
                     self.name = name
                     self.service = scaling_policy_detail_dict['service'] if 'service' in scaling_policy_detail_dict else None
                     self.metric = scaling_policy_detail_dict['metric'] if 'metric' in scaling_policy_detail_dict else None
+                    self.metric_aggregated = scaling_policy_detail_dict['metric_aggregated'] if 'metric_aggregated' in scaling_policy_detail_dict else None
                     self.comparative_operator = scaling_policy_detail_dict['comparative_operator'] if 'comparative_operator' in scaling_policy_detail_dict else None
                     self.threshold = scaling_policy_detail_dict['threshold'] if 'threshold' in scaling_policy_detail_dict else None
                     self.threshold_unit = scaling_policy_detail_dict['threshold_unit'] if 'threshold_unit' in scaling_policy_detail_dict else None
@@ -345,7 +347,7 @@ if __name__ == "__main__":
 
     dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
 
-    print(dynamite_config.ETCD.metrics_base_path)
+    print(dynamite_config.ScalingPolicy.scale_up.metric_aggregated)
 
     #dynamite_config = DynamiteConfig(path_to_config_file)
     #dynamite_config = DynamiteConfig("/it/is/just/wrong.yaml")
