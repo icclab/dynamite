@@ -1,5 +1,7 @@
 __author__ = 'bloe'
 
+import atexit
+
 from dynamite.ENGINE.ScalingMetrics import ScalingMetrics
 from dynamite.ENGINE.RuleChecker import RuleChecker
 from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
@@ -25,6 +27,7 @@ class ScalingEngine(object):
             configuration.rabbit_mq_endpoint,
             configuration.scaling_request_queue_name
         )
+        atexit.register(self._on_engine_shutdown)
         self._running_services_registry = RunningServicesRegistry(configuration.services_dictionary)
         self._service_instance_name_resolver = CachingServiceInstanceNameResolver()
 
@@ -32,12 +35,16 @@ class ScalingEngine(object):
         # TODO: start minimal service count
 
         while True:
-            metrics_message = self._retreive_metrics()
-            scaling_actions = self._rule_checker.check_and_return_needed_scaling_actions(metrics_message)
-            self._send_filtered_scaling_actions(scaling_actions)
-            executed_tasks = self._executed_tasks_receiver.receive()
-            self._update_running_tasks_registry(executed_tasks)
-            self._resend_failed_messages(executed_tasks)
+            try:
+                metrics_message = self._retreive_metrics()
+                scaling_actions = self._rule_checker.check_and_return_needed_scaling_actions(metrics_message)
+                self._send_filtered_scaling_actions(scaling_actions)
+                executed_tasks = self._executed_tasks_receiver.receive()
+                self._update_running_tasks_registry(executed_tasks)
+                self._resend_failed_messages(executed_tasks)
+            except Exception:
+                # TODO: log exception
+                pass
 
     def _retreive_metrics(self):
         # get metrics from etcd queue
@@ -85,4 +92,9 @@ class ScalingEngine(object):
                 self._report_failed_scaling_message(executor_response)
 
     def _report_failed_scaling_message(self, executor_response):
+        # TODO: log failed scaling message
         pass
+
+    def _on_engine_shutdown(self):
+        self._scaling_action_sender.close()
+        self._executed_tasks_receiver.close()

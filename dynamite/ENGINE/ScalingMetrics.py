@@ -116,7 +116,3 @@ class ScalingMetrics:
 
     def get_all_metric_services(self):
         return self._metrics_of_service.values()
-
-    def cleanup_old_metrics(self, older_than_seconds):
-        # TODO: implement delete of old metrics
-        pass
