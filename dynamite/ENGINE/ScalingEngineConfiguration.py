@@ -7,5 +7,6 @@ class ScalingEngineConfiguration(object):
     services_dictionary = {}
     metrics_receiver = None
     scaling_policies = []
+    etcd_connection = None
 
 
