@@ -35,8 +35,9 @@ Dynamite:
       type: service_announcer
   ScalingPolicy:
     scale_up:
-      service: haproxy
-      metric: response_time
+      service: loadbalancer
+      metric: response_time.time_backend_response.p95
+      metric_aggregated: true
       comparative_operator: gt
       threshold: 250
       treshold_unit: micro_second
@@ -45,8 +46,9 @@ Dynamite:
       cooldown_period: 1
       cooldown_period_unit: minute
     scale_down:
-      service: apache
-      metric: cpu_load
+      service: webserver
+      metric: cpu_user
+      metric_aggregated: false
       comparative_operator: lt
       threshold: 30
       threshold_unit: percent

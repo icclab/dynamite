@@ -4,11 +4,15 @@ import sys
 import argparse
 import os
 import platform
+import pika
+import time
 
 from dynamite.ENGINE.ScalingEngine import ScalingEngine
 from dynamite.GENERAL.MetricsReceiver import MetricsReceiver
 from multiprocessing import Queue
 from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguration
+from dynamite.EXECUTOR.ScalingRequestGenerator import ScalingRequestGenerator
+from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
 
 WORKING_DIRECTORY = 'C:\\Projects\\CNA\\dynamite'
 import pika
@@ -146,6 +150,7 @@ if __name__ == '__main__':
                                          name_scaling_request_queue=RABBITMQ_SCALING_REQUEST_QUEUE_NAME,
                                          name_scaling_response_queue=RABBITMQ_SCALING_RESPONSE_QUEUE_NAME)
 
+    # Start DynamiteExecutor Process
     dynamite_executor.start()
 
     running = True
