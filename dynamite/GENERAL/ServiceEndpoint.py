@@ -3,6 +3,11 @@ __author__ = 'bloe'
 
 class ServiceEndpoint:
     def __init__(self, host_ip, port):
+        if port < 1 or port > 65535:
+            raise ValueError("Port must be > 0 and < 65536. It was {}".format(str(port)))
+        if len(host_ip) < 1:
+            raise ValueError("Host IP address must be specified!")
+
         self.host_ip = host_ip
         self.port = port
 
@@ -22,7 +27,6 @@ class ServiceEndpoint:
 
         port = int(port_as_string)
         return ServiceEndpoint(host_ip, port)
-
 
     @classmethod
     def raise_wrong_connection_string_error(cls, connection_string, error_info=""):

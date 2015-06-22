@@ -23,7 +23,7 @@ class DynamiteScalingResponse(object):
         return json_string
 
     @staticmethod
-    def from_scaling_request(cls, scaling_request, success):
+    def from_scaling_request(scaling_request, success):
         if not isinstance(success, bool):
             raise IllegalArgumentError("Error: argument <success> needs to be of type <bool>")
         if not isinstance(scaling_request, DynamiteScalingRequest) or scaling_request is None:
@@ -38,7 +38,7 @@ class DynamiteScalingResponse(object):
         return scaling_response
 
     @staticmethod
-    def from_json_string(cls, json_string):
+    def from_json_string(json_string):
         scaling_response_json = json.loads(json_string)
         scaling_response = DynamiteScalingResponse()
         scaling_response.success = scaling_response_json["success"]
