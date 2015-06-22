@@ -17,7 +17,7 @@ class ScalingStateTriggered(ScalingState):
     @staticmethod
     def _handle_in_period_case(predicate_satisfied, threshold_period, policy):
         if not predicate_satisfied:
-            ScalingStateTriggered._change_state_to_untriggered(threshold_period,policy)
+            ScalingStateTriggered._change_state_to_untriggered(threshold_period, policy)
 
     @staticmethod
     def _handle_out_of_period_case(threshold_period, policy):
@@ -27,7 +27,6 @@ class ScalingStateTriggered(ScalingState):
     def _change_state_to_untriggered(threshold_period, policy):
         threshold_period.reset()
         policy.state = ScalingStateUntriggered()
-
 
 class ScalingStateUntriggered(ScalingState):
     def update_and_report_if_action_required(self, policy, predicate_satisfied, timestamp, instance_uuid):

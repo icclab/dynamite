@@ -4,6 +4,12 @@ from dynamite.ENGINE.TimePeriod import TimePeriod
 from dynamite.ENGINE.ScalingState import ScalingStateUntriggered
 from dynamite.ENGINE.ScalingAction import ScalingAction
 from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteScalingCommand
+import dateutil.parser
+from enum import Enum
+
+class ScalingPolicyType(Enum):
+    scale_up = 1
+    scale_down = 2
 
 class ScalingPolicy(object):
     MINUTES_IN_HOUR = 60
@@ -11,11 +17,10 @@ class ScalingPolicy(object):
 
     cooldown_period = None
     state = None
-    scaling_actions = []
     service = None
     policy_name = None
 
-    def __init__(self, scaling_policy_configuration, service):
+    def __init__(self, scaling_policy_configuration, service, scaling_policy_type):
         self.state = ScalingStateUntriggered()
         self._policy_config = scaling_policy_configuration
         self.policy_name = scaling_policy_configuration.name
@@ -31,22 +36,23 @@ class ScalingPolicy(object):
         self._latest_metric_update_of_instance = {}
         self.service = service
         self._threshold_period_per_instance = {}
+        self._scaling_policy_type = scaling_policy_type
 
     def _calculate_period_in_seconds(self, number, unit):
         conversion_methods = {
             "second": lambda x: x,
-            "minute": self.minutes_to_seconds,
-            "hour": self.hours_to_seconds
+            "minute": self._minutes_to_seconds,
+            "hour": self._hours_to_seconds
         }
         if not unit in conversion_methods:
             raise ValueError("Could not find unit {}. Allowed values are 'second', 'minute', 'hour'.".format(unit))
         return conversion_methods[unit](number)
 
-    def minutes_to_seconds(self, minutes):
+    def _minutes_to_seconds(self, minutes):
         return minutes * self.SECONDS_IN_MINUTE
 
-    def hours_to_seconds(self, hours):
-        return self.minutes_to_seconds(hours * self.MINUTES_IN_HOUR)
+    def _hours_to_seconds(self, hours):
+        return self._minutes_to_seconds(hours * self.MINUTES_IN_HOUR)
 
     def update_policy_state_and_get_scaling_actions(self, metrics_message):
         scaling_actions = []
@@ -55,6 +61,8 @@ class ScalingPolicy(object):
 
         for metric_value in metrics_message.metric_values:
             for timestamp, value in metric_value.items():
+                timestamp = dateutil.parser.parse(timestamp)
+
                 if not self._is_new_metric(timestamp, metrics_message.uuid):
                     continue
 
@@ -62,7 +70,7 @@ class ScalingPolicy(object):
                     continue
 
                 predicate_satisfied = predicate_method(
-                    value,
+                    float(value),
                     self._policy_config.threshold
                 )
                 action_required = self.state.update_and_report_if_action_required(
@@ -73,7 +81,7 @@ class ScalingPolicy(object):
                 )
                 if action_required:
                     scaling_action = self._create_scaling_action(metrics_message.metric_name, metrics_message.uuid)
-                    self.cooldown_period.reset()
+                    self.cooldown_period.start_period(timestamp)
                     scaling_actions.append(scaling_action)
 
         return scaling_actions
@@ -93,7 +101,7 @@ class ScalingPolicy(object):
         return policy_predicate[operation_string]
 
     def get_threshold_period_of_instance(self, instance_name):
-        if instance_name not in self._threshold_period_per_instance[instance_name]:
+        if instance_name not in self._threshold_period_per_instance:
             self._threshold_period_per_instance[instance_name] = TimePeriod(self._threshold_period_in_seconds)
         return self._threshold_period_per_instance[instance_name]
 
@@ -107,15 +115,14 @@ class ScalingPolicy(object):
         return new_metric
 
     def _create_scaling_action(self, metric_name, instance_uuid):
-        scaling_action = ScalingAction()
-        scaling_action.service_name = self.service.service_name
+        scaling_action = ScalingAction(self.service.name)
         scaling_action.metric_name = metric_name
         scaling_action.command = self._find_out_scaling_command()
         scaling_action.uuid = instance_uuid
         return scaling_action
 
     def _find_out_scaling_command(self):
-        if self.policy_name == self.service_config_details.scale_up_policy:
+        if self._scaling_policy_type == ScalingPolicyType.scale_up:
             return DynamiteScalingCommand.SCALE_UP
         else:
             return DynamiteScalingCommand.SCALE_DOWN
