@@ -7,9 +7,10 @@ Dynamite:
     ip: 127.0.0.1
     port: 49153
   ETCD:
-    ip_api_endpoint: 127.0.0.1
-    port_api_endpoint: 4001
+    # ip_api_endpoint: 127.0.0.1
+    # port_api_endpoint: 4001
     application_base_path: /services
+    metrics_base_path: /metrics
   Service:
     example:
       name_of_unit_file: example.service

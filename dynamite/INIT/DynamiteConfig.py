@@ -67,12 +67,14 @@ class DynamiteConfig(object):
         # ip_api_endpoint = None
         # port_api_endpoint = None
         application_base_path = None
+        metrics_base_path = None
 
         #def __init__(self, ip_api_endpoint, port_api_endpoint, application_base_path):
-        def __init__(self, application_base_path):
+        def __init__(self, application_base_path, metrics_base_path):
             # self.ip_api_endpoint = ip_api_endpoint
             # self.port_api_endpoint = port_api_endpoint
             self.application_base_path = application_base_path
+            self.metrics_base_path = metrics_base_path
 
         def __str__(self):
             return_string = "ETCD Struct:\n" \
@@ -287,7 +289,8 @@ class DynamiteConfig(object):
         self.FleetAPIEndpoint = DynamiteConfig.FleetAPIEndpointStruct(IP,Port)
 
         etcd_application_base_path = self.dynamite_yaml_config['Dynamite']['ETCD']['application_base_path']
-        self.ETCD = DynamiteConfig.ETCDStruct(etcd_application_base_path)
+        etcd_metrics_base_path = self.dynamite_yaml_config['Dynamite']['ETCD']['metrics_base_path']
+        self.ETCD = DynamiteConfig.ETCDStruct(etcd_application_base_path, etcd_metrics_base_path)
 
         ServicesDict = self.dynamite_yaml_config['Dynamite']['Service']
         self.Service = DynamiteConfig.ServiceStruct(ServicesDict)
@@ -342,7 +345,7 @@ if __name__ == "__main__":
 
     dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
 
-    #print(dynamite_config.IntervalTree)
+    print(dynamite_config.ETCD.metrics_base_path)
 
     #dynamite_config = DynamiteConfig(path_to_config_file)
     #dynamite_config = DynamiteConfig("/it/is/just/wrong.yaml")
