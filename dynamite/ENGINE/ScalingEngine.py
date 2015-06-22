@@ -7,9 +7,11 @@ from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
 from dynamite.ENGINE.RunningServicesRegistry import RunningServicesRegistry
 from dynamite.ENGINE.ServiceInstanceNameResolver import CachingServiceInstanceNameResolver
 from dynamite.EXECUTOR.DynamiteScalingRequest import DynamiteScalingRequest
+from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
 
 class ScalingEngine(object):
     AGGREGATE_METRICS = False
+    RETRANSMIT_COUNT_OF_FAILED_MESSAGES = 5
 
     def __init__(self, configuration):
         self._metrics_receiver = configuration.metrics_receiver
@@ -34,7 +36,8 @@ class ScalingEngine(object):
             scaling_actions = self._rule_checker.check_and_return_needed_scaling_actions(metrics_message)
             self._send_filtered_scaling_actions(scaling_actions)
             executed_tasks = self._executed_tasks_receiver.receive()
-            self._update_running_tasks_registry()
+            self._update_running_tasks_registry(executed_tasks)
+            self._resend_failed_messages(executed_tasks)
 
     def _retreive_metrics(self):
         # get metrics from etcd queue
@@ -57,6 +60,29 @@ class ScalingEngine(object):
 
     def _update_running_tasks_registry(self, executed_tasks):
         for executed_task in executed_tasks:
-            # TODO: update service count: self._running_services_registry.add/remove
+            if executed_task.success:
+                self._add_remove_running_service_based_on_command(executed_task)
 
-            pass
+    def _add_remove_running_service_based_on_command(self, executor_response):
+        if executor_response.command == DynamiteScalingCommand.SCALE_UP:
+            self._running_services_registry.add_running_service(executor_response.service_name)
+        elif executor_response.command == DynamiteScalingCommand.SCALE_DOWN:
+            self._running_services_registry.remove_running_service(executor_response.service_name)
+        else:
+            raise ValueError("Unknown command {}, cannot parse executor response: {}".format(
+                executor_response.command,
+                executor_response)
+            )
+
+    def _resend_failed_messages(self, executor_response_messages):
+        for executor_response in executor_response_messages:
+            if executor_response.success:
+                continue
+            if executor_response.failure_counter <= self.RETRANSMIT_COUNT_OF_FAILED_MESSAGES:
+                executor_response.failure_counter += 1
+                self._scaling_action_sender.send_action(executor_response)
+            else:
+                self._report_failed_scaling_message(executor_response)
+
+    def _report_failed_scaling_message(self, executor_response):
+        pass
