@@ -5,19 +5,18 @@ import argparse
 import os
 import platform
 import pika
-import time
 
-from dynamite.ENGINE.ScalingEngine import ScalingEngine
-from dynamite.GENERAL.MetricsReceiver import MetricsReceiver
 from multiprocessing import Queue
+
+from dynamite.INIT.DynamiteINIT import DynamiteINIT
+from dynamite.GENERAL.MetricsReceiver import MetricsReceiver
+from dynamite.GENERAL.DynamiteHelper import DYNAMITE_ENVIRONMENT_STRUCT
+from dynamite.ENGINE.ScalingEngine import ScalingEngine
 from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguration
-from dynamite.EXECUTOR.ScalingRequestGenerator import ScalingRequestGenerator
 from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
+from dynamite.METRICS.DynamiteMETRICS import DynamiteMETRICS
 
 WORKING_DIRECTORY = 'C:\\Projects\\CNA\\dynamite'
-import pika
-import time
-from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
 
 # The following is only for usage of this application from the command-line
 # And only during development
@@ -27,10 +26,6 @@ if WORKING_DIRECTORY not in sys.path:
 
 if WORKING_DIRECTORY not in sys.path:
     sys.path.append(WORKING_DIRECTORY)
-
-from dynamite.GENERAL.DynamiteHelper import DYNAMITE_ENVIRONMENT_STRUCT
-from dynamite.GENERAL.DynamiteHelper import DYNAMITE_APPLICATION_STATUS
-from dynamite.INIT.DynamiteINIT import DynamiteINIT
 
 DYNAMITE_ENVIRONMENT = os.getenv('DYNAMITE_ENVIRONMENT', DYNAMITE_ENVIRONMENT_STRUCT.DEVELOPMENT)
 
@@ -144,24 +139,21 @@ if __name__ == '__main__':
 
     create_rabbit_mq_queues(ARG_RABBITMQ_ENDPOINT)
 
-    # create DynamiteExecutor Process
     dynamite_executor = DynamiteEXECUTOR(rabbit_mq_endpoint=ARG_RABBITMQ_ENDPOINT,
                                          etcd_endpoint=ARG_ETCD_ENDPOINT,
                                          name_scaling_request_queue=RABBITMQ_SCALING_REQUEST_QUEUE_NAME,
                                          name_scaling_response_queue=RABBITMQ_SCALING_RESPONSE_QUEUE_NAME)
 
-    # Start DynamiteExecutor Process
     dynamite_executor.start()
 
-    running = True
+    scaling_engine_metrics_communication_queue = Queue()
+    dynamite_metrics = DynamiteMETRICS(ARG_ETCD_ENDPOINT,
+                                       scaling_engine_metrics_communication_queue)
 
-    while running:
-        time.sleep(5)
-        dynamite_executor.terminate()
-        running = False
+    dynamite_metrics.start()
+
 
     scaling_engine_config = ScalingEngineConfiguration()
-    scaling_engine_metrics_communication_queue = Queue()
     scaling_engine_config.metrics_receiver = MetricsReceiver(scaling_engine_metrics_communication_queue)
     scaling_engine_config.services_dictionary = dynamite_init.dynamite_service_handler.FleetServiceDict
     scaling_engine_config.scaling_policies = dynamite_init.dynamite_config.ScalingPolicy.get_scaling_policies()
@@ -169,4 +161,3 @@ if __name__ == '__main__':
 
     scaling_engine = ScalingEngine(scaling_engine_config)
     scaling_engine.start()
-
