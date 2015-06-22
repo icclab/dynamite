@@ -45,6 +45,8 @@ class DynamiteEXECUTOR(Process):
 
         self.rabbit_mq_connection = pika.BlockingConnection(rabbit_mq_connection_parameters)
 
+        self.rabbit_mq_channel = self.rabbit_mq_connection.channel()
+
     def _close_rabbit_mq_connection(self):
         if self.rabbit_mq_connection:
             self.rabbit_mq_connection.close()
@@ -98,13 +100,12 @@ class DynamiteEXECUTOR(Process):
 
         self._create_rabbit_mq_connection()
 
-        channel = self.rabbit_mq_connection.channel()
+        if self.rabbit_mq_channel:
+            self.rabbit_mq_channel.basic_consume(self._scaling_request_received,
+                                                 queue=self.name_scaling_request_queue,
+                                                 no_ack=False)
 
-        channel.basic_consume(self._scaling_request_received,
-                              queue=self.name_scaling_request_queue,
-                              no_ack=False)
-
-        channel.start_consuming()
+            self.rabbit_mq_channel.start_consuming()
 
     def __init__(self,
                  rabbit_mq_endpoint=None,
