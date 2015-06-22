@@ -60,7 +60,7 @@ class DynamiteEXECUTOR(Process):
 
         received_scaling_request_string = body.decode("utf-8")
 
-        scaling_request = DynamiteScalingRequest(received_scaling_request_string)
+        scaling_request = DynamiteScalingRequest.from_json_string(received_scaling_request_string)
 
         response = None
         if scaling_request.command == DynamiteScalingCommand.SCALE_UP:

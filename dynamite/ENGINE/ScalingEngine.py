@@ -6,6 +6,7 @@ from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
 from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
 from dynamite.ENGINE.RunningServicesRegistry import RunningServicesRegistry
 from dynamite.ENGINE.ServiceInstanceNameResolver import CachingServiceInstanceNameResolver
+from dynamite.EXECUTOR.DynamiteScalingRequest import DynamiteScalingRequest
 
 class ScalingEngine(object):
     AGGREGATE_METRICS = False
@@ -40,7 +41,7 @@ class ScalingEngine(object):
                     )
 
                     # TODO: write action to rabbitmq queue if needed
-                    self._scaling_action_sender.send_action(scaling_action)
+                    self._scaling_action_sender.send_action(DynamiteScalingRequest.from_scaling_action(scaling_action))
                 else:
                     continue
 
@@ -50,4 +51,3 @@ class ScalingEngine(object):
             for executed_task in executed_tasks:
                 # TODO: update service count: self._running_services_registry.add/remove
                 pass
-
