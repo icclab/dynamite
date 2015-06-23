@@ -2,7 +2,7 @@
 Dynamite:
   ServiceFiles:
     PathList: 
-      - C:\Users\brnr\PycharmProjects\dynamite\dynamite\tests\TEST_CONFIG_FOLDER\service-files
+      - 'C:\Sandro\ICCLab\Cloud-Native-Applications\Code-Repos\dynamite\dynamite\tests\TEST_CONFIG_FOLDER\service-files'
   FleetAPIEndpoint:
     ip: 127.0.0.1
     port: 49153
