@@ -340,8 +340,8 @@ class DynamiteServiceHandler(object):
         self.FleetServiceHandler = FleetServiceHandler(dynamite_config.FleetAPIEndpoint.ip,
                                                        str(dynamite_config.FleetAPIEndpoint.port))
 
-        if dynamite_config is not None and etcd_endpoint is None:
-            self._initial_start_all_services_to_fleet(self.FleetServiceHandler, self.FleetServiceDict)
+        #if dynamite_config is not None and etcd_endpoint is None:
+        #    self._initial_start_all_services_to_fleet(self.FleetServiceHandler, self.FleetServiceDict)
 
 
     def __str__(self):

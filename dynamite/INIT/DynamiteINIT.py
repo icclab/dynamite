@@ -88,7 +88,10 @@ class DynamiteINIT(object):
             # Write the json for each service instance in its own path and delete those entries from the original
             # dict which will be saved in its own path
             #   makes it easier to update single service instances (e.g. updating status of service)
-            copy_dict = fleet_service_dict['fleet_service_instances'].copy()
+            copy_dict = {}
+            if "fleet_service_instances" in fleet_service_dict:
+                service_instances = fleet_service_dict['fleet_service_instances']
+                copy_dict = service_instances.copy() if service_instances is not None else {}
 
             if len(copy_dict) != 0:
                 for fleet_service_instance_name, fleet_service_instance_dict in copy_dict.items():

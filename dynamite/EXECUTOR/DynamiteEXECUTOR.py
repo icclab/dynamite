@@ -59,7 +59,6 @@ class DynamiteEXECUTOR(Process):
                                                                etcd_endpoint=etcd_endpoint)
 
     def _scaling_request_received(self, ch, method, properties, body):
-
         received_scaling_request_string = body.decode("utf-8")
 
         scaling_request = DynamiteScalingRequest.from_json_string(received_scaling_request_string)

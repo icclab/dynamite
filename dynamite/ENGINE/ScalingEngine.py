@@ -16,6 +16,7 @@ class ScalingEngine(object):
     RETRANSMIT_COUNT_OF_FAILED_MESSAGES = 5
 
     def __init__(self, configuration):
+        self._services_dictionary = configuration.services_dictionary
         self._metrics_receiver = configuration.metrics_receiver
         self._metrics = ScalingMetrics()
         self._rule_checker = RuleChecker(configuration.scaling_policies, configuration.services_dictionary)
@@ -33,7 +34,7 @@ class ScalingEngine(object):
         self._service_instance_name_resolver = CachingServiceInstanceNameResolver(instance_name_resolver)
 
     def start(self):
-        # TODO: start minimal service count
+        self._start_minimal_required_services()
 
         while True:
             try:
@@ -59,9 +60,10 @@ class ScalingEngine(object):
     def _send_filtered_scaling_actions(self, scaling_actions):
         for scaling_action in scaling_actions:
             if self._running_services_registry.scaling_action_allowed(scaling_action):
-                scaling_action.service_instance_name = self._service_instance_name_resolver.resolve(
-                    scaling_action.uuid
-                )
+                if scaling_action.command == DynamiteScalingCommand.SCALE_DOWN:
+                    scaling_action.service_instance_name = self._service_instance_name_resolver.resolve(
+                        scaling_action.uuid
+                    )
                 self._scaling_action_sender.send_action(DynamiteScalingRequest.from_scaling_action(scaling_action))
             else:
                 continue
@@ -99,3 +101,14 @@ class ScalingEngine(object):
     def _on_engine_shutdown(self):
         self._scaling_action_sender.close()
         self._executed_tasks_receiver.close()
+
+    def _start_minimal_required_services(self):
+        for service_name, service in self._services_dictionary.items():
+            running_services = self._running_services_registry.number_of_running_instances_of_service(service_name)
+            if service.service_config_details.min_instance is None:
+                continue
+            services_to_start = service.service_config_details.min_instance - running_services
+            services_to_start = 0 if services_to_start < 0 else services_to_start
+            for x in range(0, services_to_start):
+                request = DynamiteScalingRequest.from_service(service, DynamiteScalingCommand.SCALE_UP)
+                self._scaling_action_sender.send_action(request)

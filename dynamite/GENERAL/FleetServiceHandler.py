@@ -46,7 +46,7 @@ class FleetServiceHandler(object):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService.FleetServiceInstance>")
 
         if fleet_service_instance.service_announcer:
-            self.submit(fleet_service, fleet_service_instance.service_announcer)
+            self.submit(fleet_service.service_announcer, fleet_service_instance.service_announcer)
 
         if fleet_service_instance.state is None:
             service_name = fleet_service_instance.name

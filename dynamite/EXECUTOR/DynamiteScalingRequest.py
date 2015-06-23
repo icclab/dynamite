@@ -25,6 +25,15 @@ class DynamiteScalingRequest(object):
         return self.__dict__ == other.__dict__
 
     @classmethod
+    def from_service(cls, service, command, service_instance_name=None):
+        request = DynamiteScalingRequest()
+        request.service_name = service.name
+        request.service_instance_name = service_instance_name
+        request.failure_counter = 0
+        request.command = command
+        return request
+
+    @classmethod
     def from_scaling_action(cls, scaling_action):
         request = DynamiteScalingRequest()
         request.service_name = scaling_action.service_name
