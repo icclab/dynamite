@@ -347,7 +347,8 @@ if __name__ == "__main__":
 
     dynamite_config = DynamiteConfig(path_to_config_file, service_folder_list)
 
-    print(dynamite_config.ScalingPolicy.scale_up.metric_aggregated)
+    for service_policy_name, scaling_policy in dynamite_config.ScalingPolicy.__dict__.items():
+        print(scaling_policy.service)
 
     #dynamite_config = DynamiteConfig(path_to_config_file)
     #dynamite_config = DynamiteConfig("/it/is/just/wrong.yaml")
