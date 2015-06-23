@@ -157,10 +157,7 @@ class DynamiteMETRICS(Process):
                                                          metric_values,
                                                          instance.metric_name)
 
-                        print(metrics_message)
                         self.scaling_engine_metrics_communication_queue.put(metrics_message)
-                    else:
-                        print("nosing to see")
 
             time.sleep(1)
 
