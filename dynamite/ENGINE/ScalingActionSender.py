@@ -7,7 +7,7 @@ class ScalingActionSender(object):
         rabbit_mq_connection_parameters = pika.ConnectionParameters(host=rabbit_mq_endpoint.host_ip,
                                                                     port=rabbit_mq_endpoint.port)
         self._rabbit_mq_connection = pika.BlockingConnection(rabbit_mq_connection_parameters)
-        self._queue_channel = self.rabbit_mq_connection.channel()
+        self._queue_channel = self._rabbit_mq_connection.channel()
         self._queue_name = queue_name
 
     def send_action(self, scaling_request):

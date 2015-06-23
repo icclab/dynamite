@@ -7,7 +7,7 @@ from dynamite.ENGINE.RuleChecker import RuleChecker
 from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
 from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
 from dynamite.ENGINE.RunningServicesRegistry import RunningServicesRegistry
-from dynamite.ENGINE.ServiceInstanceNameResolver import CachingServiceInstanceNameResolver
+from dynamite.ENGINE.ServiceInstanceNameResolver import CachingServiceInstanceNameResolver, ServiceInstanceNameResolver
 from dynamite.EXECUTOR.DynamiteScalingRequest import DynamiteScalingRequest
 from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
 
@@ -29,7 +29,8 @@ class ScalingEngine(object):
         )
         atexit.register(self._on_engine_shutdown)
         self._running_services_registry = RunningServicesRegistry(configuration.services_dictionary)
-        self._service_instance_name_resolver = CachingServiceInstanceNameResolver()
+        instance_name_resolver = ServiceInstanceNameResolver(configuration.etcd_connection)
+        self._service_instance_name_resolver = CachingServiceInstanceNameResolver(instance_name_resolver)
 
     def start(self):
         # TODO: start minimal service count
