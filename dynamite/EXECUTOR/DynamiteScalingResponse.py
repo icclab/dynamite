@@ -22,6 +22,10 @@ class DynamiteScalingResponse(object):
 
         return json_string
 
+    def __repr__(self):
+        return "DynamiteScalingResponse(command={},service_name={},service_instance_name={},failure_counter={},success={})".\
+            format(self.command, self.service_name, self.service_instance_name, self.failure_counter, self.success)
+
     @staticmethod
     def from_scaling_request(scaling_request, success):
         if not isinstance(success, bool):

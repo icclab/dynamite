@@ -19,7 +19,7 @@ from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguratio
 from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
 from dynamite.METRICS.DynamiteMETRICS import DynamiteMETRICS
 
-class Dynamite(object):
+class Dynamite:
 
     DYNAMITE_ENVIRONMENT = os.getenv('DYNAMITE_ENVIRONMENT', DYNAMITE_ENVIRONMENT_STRUCT.DEVELOPMENT)
 
@@ -33,8 +33,11 @@ class Dynamite(object):
     ARG_ETCD_ENDPOINT = None
     ARG_RABBITMQ_ENDPOINT = None
 
-    RABBITMQ_SCALING_REQUEST_QUEUE_NAME =" dynamite_scaling_request"
+    RABBITMQ_SCALING_REQUEST_QUEUE_NAME = "dynamite_scaling_request"
     RABBITMQ_SCALING_RESPONSE_QUEUE_NAME = "dynamite_scaling_response"
+
+    def __init__(self):
+        pass
 
     def init_env(self):
         global DEFAULT_CONFIG_PATH
@@ -159,4 +162,3 @@ class Dynamite(object):
 if __name__ == '__main__':
     dynamite = Dynamite()
     dynamite.run()
-
