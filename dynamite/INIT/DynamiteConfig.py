@@ -178,7 +178,7 @@ class DynamiteConfig(object):
         class ScalingPolicyDetailStruct(object):
             # Instance Variables
             name = None
-            service = None
+            service_type = None
             metric = None
             metric_aggregated = None
             comparative_operator = None
@@ -191,7 +191,7 @@ class DynamiteConfig(object):
 
             def __init__(self, name, scaling_policy_detail_dict):
                     self.name = name
-                    self.service = scaling_policy_detail_dict['service'] if 'service' in scaling_policy_detail_dict else None
+                    self.service_type = scaling_policy_detail_dict['service_type'] if 'service_type' in scaling_policy_detail_dict else None
                     self.metric = scaling_policy_detail_dict['metric'] if 'metric' in scaling_policy_detail_dict else None
                     self.metric_aggregated = scaling_policy_detail_dict['metric_aggregated'] if 'metric_aggregated' in scaling_policy_detail_dict else None
                     self.comparative_operator = scaling_policy_detail_dict['comparative_operator'] if 'comparative_operator' in scaling_policy_detail_dict else None
