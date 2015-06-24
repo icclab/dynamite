@@ -39,7 +39,7 @@ def test_connection(etcd_base_url):
             return False
 
     except requests.exceptions.ConnectionError:
-        print("Error connecting to ETCD. Check if Endpoint is correct: " + self.ip + ":" + self.port)
+        print("Error connecting to ETCD. Check if Endpoint is correct: " + ip + ":" + port)
 
 
 def create_etcdctl(etcd_endpoint):
