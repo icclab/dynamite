@@ -213,5 +213,4 @@ class FleetService(object):
             return return_string
 
 if __name__ == '__main__':
-
-    print(type(FLEET_STATE_STRUCT.INACTIVE))
+    pass
