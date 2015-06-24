@@ -11,6 +11,19 @@ class DynamiteScalingRequest(object):
     service_instance_name = None
     failure_counter = None
 
+    def __repr__(self):
+        return "DynamiteScalingRequest(" \
+               "command=\"{}\", " \
+               "service_name=\"{}\", " \
+               "service_instance_counter=\"{}\", " \
+               "failure_counter=\"{}\", " \
+               .format(
+                    self.command,
+                    self.service_name,
+                    self.service_instance_name,
+                    self.failure_counter,
+               )
+
     def to_json_string(self):
         instance_dict = {}
 
