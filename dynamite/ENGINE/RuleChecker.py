@@ -1,10 +1,12 @@
 __author__ = 'bloe'
 
+import logging
 from dynamite.ENGINE.ScalingPolicy import ScalingPolicyType
 from dynamite.ENGINE.ScalingPolicy import ScalingPolicy
 
 class RuleChecker(object):
     def __init__(self, scaling_policies, service_dictionary):
+        self._logger = logging.getLogger(__name__)
         self._scaling_policies_by_metric = {}
         self._scaling_policy_details_per_name = {}
         self._initialize_scaling_policies(scaling_policies, service_dictionary)
@@ -47,6 +49,7 @@ class RuleChecker(object):
         related_policies = self._scaling_policies_by_metric[metric_message.metric_name]
         scaling_actions = []
         for policy in related_policies:
+            self._logger.debug("found policy for metric: policy=%s metric=%s", repr(policy), repr(metric_message))
             scaling_actions.extend(policy.update_policy_state_and_get_scaling_actions(metric_message))
         return scaling_actions
 

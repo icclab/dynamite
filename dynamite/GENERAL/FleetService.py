@@ -156,6 +156,17 @@ class FleetService(object):
 
         return return_string
 
+    def __repr__(self):
+        return "FleetService(name={},path_on_filesystem={},service_config_details={},is_template={}," \
+               "used_port_numbers={},service_announcer={},service_instances={})".format(
+                    self.name,
+                    self.path_on_filesystem,
+                    repr(self.service_config_details),
+                    repr(self.is_template),
+                    repr(self.used_port_numbers),
+                    repr(self.service_announcer),
+                    repr(self.fleet_service_instances)
+               )
 
     class FleetServiceInstance(object):
         name = None
@@ -211,6 +222,13 @@ class FleetService(object):
                 return_string += "\t\tName: " + instance_variable_name + ", Type: " + str(type(value)) + "\n"
 
             return return_string
+
+        def __repr__(self):
+            return "FleetServiceInstance(name={},state={},service_announcer={})".format(
+                self.name,
+                repr(self.state),
+                repr(self.service_announcer)
+            )
 
 if __name__ == '__main__':
     pass

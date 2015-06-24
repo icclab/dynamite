@@ -21,3 +21,10 @@ class ScalingAction(object):
         self._command = command
 
     command = property(_get_command, _set_command)
+
+    def __repr__(self):
+        return "ScalingAction(service_name={},service_instance_name={},uuid={})".format(
+            self.service_name,
+            self.service_instance_name,
+            self.uuid
+        )

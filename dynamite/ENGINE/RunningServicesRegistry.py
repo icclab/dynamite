@@ -1,9 +1,11 @@
 __author__ = 'bloe'
 
+import logging
 from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
 
 class RunningServicesRegistry(object):
     def __init__(self, services_configuration):
+        self._logger = logging.getLogger(__name__)
         self._running_services = {}
         self._services_configuration = services_configuration
         self._initialize_from_service_dictionary(services_configuration)
@@ -56,9 +58,25 @@ class RunningServicesRegistry(object):
     def _scaleup_allowed(self, service):
         if service.service_config_details.max_instance is None:
             return True
-        return service.service_config_details.max_instance > self.number_of_running_instances_of_service(service.name)
+        running_instance_count = self.number_of_running_instances_of_service(service.name)
+        allowed = service.service_config_details.max_instance > running_instance_count
+        self._logger.info("scaleup for %s is%s allowed. Max instance count: %d, Running instance count: %d",
+                          service.name,
+                          "" if allowed else "not",
+                          service.service_config_details.max_instance,
+                          running_instance_count
+                          )
+        return allowed
 
     def _scaledown_allowed(self, service):
         if service.service_config_details.min_instance is None:
             return True
-        return service.service_config_details.min_instance < self.number_of_running_instances_of_service(service.name)
+        running_instance_count = self.number_of_running_instances_of_service(service.name)
+        allowed = service.service_config_details.min_instance < running_instance_count
+        self._logger.info("scaledown for %s is%s allowed. Minimal instance count: %d, Running instance count: %d",
+                          service.name,
+                          "" if allowed else "not",
+                          service.service_config_details.min_instance,
+                          running_instance_count
+                          )
+        return allowed

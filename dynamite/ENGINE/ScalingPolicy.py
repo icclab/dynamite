@@ -1,11 +1,12 @@
 __author__ = 'bloe'
 
+import logging
+import dateutil.parser
+from enum import Enum
 from dynamite.ENGINE.TimePeriod import TimePeriod
 from dynamite.ENGINE.ScalingState import ScalingStateUntriggered
 from dynamite.ENGINE.ScalingAction import ScalingAction
 from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteScalingCommand
-import dateutil.parser
-from enum import Enum
 
 class ScalingPolicyType(Enum):
     scale_up = 1
@@ -21,6 +22,8 @@ class ScalingPolicy(object):
     policy_name = None
 
     def __init__(self, scaling_policy_configuration, service, scaling_policy_type):
+        self._logger = logging.getLogger(__name__)
+
         self.state = ScalingStateUntriggered()
         self._policy_config = scaling_policy_configuration
         self.policy_name = scaling_policy_configuration.name
@@ -28,10 +31,12 @@ class ScalingPolicy(object):
             scaling_policy_configuration.period,
             scaling_policy_configuration.period_unit
         )
+        self._logger.debug("threshold period of policy %s is %d", self.policy_name, self._threshold_period_in_seconds)
         cooldown_period_in_seconds = self._calculate_period_in_seconds(
             scaling_policy_configuration.cooldown_period,
             scaling_policy_configuration.cooldown_period_unit
         )
+        self._logger.debug("cooldown period of policy %s is %d", self.policy_name, cooldown_period_in_seconds)
         self.cooldown_period = TimePeriod(cooldown_period_in_seconds)
         self._latest_metric_update_of_instance = {}
         self.service = service
@@ -64,15 +69,22 @@ class ScalingPolicy(object):
                 timestamp = dateutil.parser.parse(timestamp)
 
                 if not self._is_new_metric(timestamp, metrics_message.uuid):
+                    self._logger.debug("metric value %s is outdated for instance %s", repr(metric_value), metrics_message.uuid)
                     continue
 
                 if self.cooldown_period.is_in_period(timestamp):
+                    self._logger.debug("metric value %s ignored because of cooldown is active", repr(metric_value))
                     continue
 
                 predicate_satisfied = predicate_method(
                     float(value),
                     self._policy_config.threshold
                 )
+                self._logger.debug("metric value %s is %s under/over threshold",
+                                   repr(metric_value),
+                                   "" if predicate_satisfied else "not"
+                                   )
+
                 action_required = self.state.update_and_report_if_action_required(
                     self,
                     predicate_satisfied,
@@ -83,6 +95,7 @@ class ScalingPolicy(object):
                     scaling_action = self._create_scaling_action(metrics_message.metric_name, metrics_message.uuid)
                     self.cooldown_period.start_period(timestamp)
                     scaling_actions.append(scaling_action)
+                    self._logger.info("Triggered scaling action %s, beginning cooldown", repr(scaling_action))
 
         return scaling_actions
 
@@ -126,3 +139,11 @@ class ScalingPolicy(object):
             return DynamiteScalingCommand.SCALE_UP
         else:
             return DynamiteScalingCommand.SCALE_DOWN
+
+    def __repr__(self):
+        return "ScalingPolicy(policy_name={},cooldown_period={},state={},service={})".format(
+            self.policy_name,
+            repr(self.cooldown_period),
+            repr(self.state),
+            repr(self.service)
+        )

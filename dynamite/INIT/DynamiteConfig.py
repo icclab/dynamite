@@ -143,6 +143,22 @@ class DynamiteConfig(object):
 
                 return return_string
 
+            def __repr__(self):
+                return "ServiceDetailStruct(name={},name_of_unit_file={},type={},min_instance={},max_instance={}," \
+                       "base_instance_prefix_number={},service_announcer={},service_dependency={}," \
+                       "scale_up_policy={},scale_down_policy={})".format(
+                            self.name,
+                            self.name_of_unit_file,
+                            self.type,
+                            repr(self.min_instance),
+                            repr(self.max_instance),
+                            repr(self.base_instance_prefix_number),
+                            repr(self.service_announcer),
+                            repr(self.service_dependency),
+                            repr(self.scale_up_policy),
+                            repr(self.scale_down_policy)
+                )
+
         def __init__(self, ServicesDict):
             if(type(ServicesDict) == type({})):
                 for (service_name, service_detail_dict) in ServicesDict.items():

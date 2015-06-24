@@ -32,3 +32,10 @@ class TimePeriod:
     def reset(self):
         self.period_started = False
         self.period_start_time = None
+
+    def __repr__(self):
+        return "TimePeriod(period_started={},period_start_time={},period_length={})".format(
+            repr(self.period_started),
+            repr(self.period_start_time),
+            repr(self.period_length_in_seconds)
+        )

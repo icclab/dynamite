@@ -11,3 +11,11 @@ class MetricsMessage(object):
     uuid = ""
     metric_values = []
     metric_name = ""
+
+    def __repr__(self):
+        return "MetricsMessage(service_name={},uuid={},metric_name={},metric_values={})".format(
+            self.service_name,
+            self.uuid,
+            self.metric_name,
+            repr(self.metric_values)
+        )
