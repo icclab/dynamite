@@ -24,6 +24,8 @@ class DynamiteMETRICS(Process):
     _etcd_service_metric_information_instances = []
     _running = False
 
+    _logger = None
+
     # service-name --> [metric-names]
     # this dictionary is used to keep track of service and metrics and helps to ensure there are no double entries
     _service_metrics_dictionary = {}
