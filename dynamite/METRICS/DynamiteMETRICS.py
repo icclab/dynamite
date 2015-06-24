@@ -2,6 +2,8 @@ __author__ = 'brnr'
 
 import time
 import json
+import logging
+import etcd
 
 from multiprocessing import Process
 
@@ -14,16 +16,32 @@ from dynamite.ENGINE.MetricValue import MetricValue
 
 class DynamiteMETRICS(Process):
 
-    etcd_endpoint = None
-    etcdctl = None
-    dynamite_config = None
-    scaling_engine_metrics_communication_queue = None
-    etcd_service_metric_information_instances = []
-    running = False
+    _etcd_endpoint = None
+    _etcdctl = None
+
+    _dynamite_config = None
+    _scaling_engine_metrics_communication_queue = None
+    _etcd_service_metric_information_instances = []
+    _running = False
 
     # service-name --> [metric-names]
     # this dictionary is used to keep track of service and metrics and helps to ensure there are no double entries
-    service_metrics_dictionary = {}
+    _service_metrics_dictionary = {}
+
+    def __init__(self,
+                 etcd_endpoint,
+                 scaling_engine_metrics_communication_queue):
+        super(DynamiteMETRICS, self).__init__()
+
+        if etcd_endpoint is not None and isinstance(etcd_endpoint, str):
+            self._etcd_endpoint = etcd_endpoint
+
+        else:
+            raise IllegalArgumentError("Error: argument <etcd_endpoint> needs to be of type <str>")
+
+        self._scaling_engine_metrics_communication_queue = scaling_engine_metrics_communication_queue
+
+        self._running = True
 
     def _init_etcdctl(self, etcd_endpoint):
         etcdctl = ETCDCTL.create_etcdctl(etcd_endpoint)
@@ -34,20 +52,24 @@ class DynamiteMETRICS(Process):
             return None
 
     def _etcd_get_uuids(self, metrics_base_path):
-        r = self.etcdctl.read(metrics_base_path, recursive=True, sorted=True)
 
-        uuids = []
+        try:
+            r = self._etcdctl.read(metrics_base_path, recursive=True, sorted=True)
 
-        for child in r.children:
-            uuid = child.key.split("/")[3]
+            uuids = []
 
-            if uuid not in uuids:
-                uuids.append(uuid)
+            for child in r.children:
+                uuid = child.key.split("/")[3]
 
-        return uuids
+                if uuid not in uuids:
+                    uuids.append(uuid)
+
+            return uuids
+        except etcd.EtcdKeyNotFound:
+            self._logger.error("Metrics path does not exist in etcd: {}".format(repr(metrics_base_path)))
 
     def _update_uuids(self):
-        for instance in self.etcd_service_metric_information_instances:
+        for instance in self._etcd_service_metric_information_instances:
             if not instance.is_aggregated:
                 uuids = self._etcd_get_uuids(instance.metric_base_path)
                 instance.uuids = uuids
@@ -62,15 +84,15 @@ class DynamiteMETRICS(Process):
 
             double_entry = False
 
-            if service_name in self.service_metrics_dictionary:
-                metrics = self.service_metrics_dictionary[service_name]
+            if service_name in self._service_metrics_dictionary:
+                metrics = self._service_metrics_dictionary[service_name]
 
                 if metric_name in metrics:
                     double_entry = True
                 else:
-                    self.service_metrics_dictionary[service_name].append(metric_name)
+                    self._service_metrics_dictionary[service_name].append(metric_name)
             else:
-                self.service_metrics_dictionary[service_name] = [metric_name]
+                self._service_metrics_dictionary[service_name] = [metric_name]
 
             if not double_entry:
                 metrics_base_path = metrics_path + "/" + service_name
@@ -110,21 +132,24 @@ class DynamiteMETRICS(Process):
                                                                                uuids,
                                                                                etcd_metric_paths)
 
-                self.etcd_service_metric_information_instances.append(etcd_service_metric_information)
+                self._etcd_service_metric_information_instances.append(etcd_service_metric_information)
 
     def run(self):
 
-        self.dynamite_config = DynamiteConfig(etcd_endpoint=self.etcd_endpoint)
-        self.etcdctl = self._init_etcdctl(self.etcd_endpoint)
-        self._create_etcd_service_metric_information_instances(self.dynamite_config)
+        self._logger = logging.getLogger(__name__)
+        self._logger.info("Initialized DynamiteMETRICS with configuration %s", str(self))
 
-        while self.running:
+        self._dynamite_config = DynamiteConfig(etcd_endpoint=self._etcd_endpoint)
+        self._etcdctl = self._init_etcdctl(self._etcd_endpoint)
+        self._create_etcd_service_metric_information_instances(self._dynamite_config)
 
-            for instance in self.etcd_service_metric_information_instances:
+        while self._running:
+
+            for instance in self._etcd_service_metric_information_instances:
 
                 for etcd_metric_path in instance.etcd_metric_paths:
 
-                    r = self.etcdctl.read(etcd_metric_path, recursive=True, sorted=True)
+                    r = self._etcdctl.read(etcd_metric_path, recursive=True, sorted=True)
 
                     metric_values = []
                     uuid = None
@@ -149,7 +174,7 @@ class DynamiteMETRICS(Process):
                             metric_value = MetricValue(timestamp, value)
                             metric_values.append(metric_value)
 
-                            self.etcdctl.delete(child.key)
+                            self._etcdctl.delete(child.key)
 
                     if len(metric_values) > 0:
                         metrics_message = MetricsMessage(instance.service_name,
@@ -157,22 +182,21 @@ class DynamiteMETRICS(Process):
                                                          metric_values,
                                                          instance.metric_name)
 
-                        self.scaling_engine_metrics_communication_queue.put(metrics_message)
+                        self._logger.debug("Putting metrics message on scaling engine metrics communication queue: {}"
+                                           .format(repr(metrics_message)))
+
+                        self._scaling_engine_metrics_communication_queue.put(metrics_message)
 
             time.sleep(1)
 
-    def __init__(self, etcd_endpoint, scaling_engine_metrics_communication_queue):
-        super(DynamiteMETRICS, self).__init__()
-
-        if etcd_endpoint is not None and isinstance(etcd_endpoint, str):
-            self.etcd_endpoint = etcd_endpoint
-
-        else:
-            raise IllegalArgumentError("Error: argument <etcd_endpoint> needs to be of type <str>")
-
-        self.scaling_engine_metrics_communication_queue = scaling_engine_metrics_communication_queue
-
-        self.running = True
+    def __repr__(self):
+        return "DynamiteMETRICS(" \
+               "etcd_endpoint=\"{}\", " \
+               "scaling_engine_metrics_communication_queue=\"{}\", " \
+               .format(
+                    self._etcd_endpoint,
+                    repr(self._scaling_engine_metrics_communication_queue),
+               )
 
 if __name__ == '__main__':
     dynamite_metrics = DynamiteMETRICS("127.0.0.1:4001", None)
