@@ -15,3 +15,9 @@ class MetricValue:
         return self._value
 
     value = property(_get_value)
+
+    def __repr__(self):
+        return "MetricValue(timestamp={},value={})".format(
+            repr(self.timestamp),
+            repr(self.value)
+        )

@@ -12,7 +12,7 @@ class ScalingEngineConfiguration(object):
     scaling_request_queue_name = None
     scaling_response_queue_name = None
 
-    def __str__(self):
+    def __repr__(self):
         return "ScalingEngineConfiguration(" \
                "services_dictionary={}," \
                "metrics_receiver={}," \

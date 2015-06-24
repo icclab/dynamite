@@ -36,5 +36,5 @@ class ServiceEndpoint:
             """.format(connection_string)
         )
 
-    def __str__(self):
+    def __repr__(self):
         return "ServiceEndpoint(host_ip={}, port={})".format(self.host_ip, self.port)

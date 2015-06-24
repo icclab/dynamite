@@ -24,6 +24,14 @@ class DynamiteScalingRequest(object):
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
+    def __repr__(self):
+        return "DynamiteScalingRequest(service_name={},service_instance_name={},failure_counter={},command={})".format(
+            self.service_name,
+            self.service_instance_name,
+            repr(self.failure_counter),
+            repr(self.command)
+        )
+
     @classmethod
     def from_service(cls, service, command, service_instance_name=None):
         request = DynamiteScalingRequest()

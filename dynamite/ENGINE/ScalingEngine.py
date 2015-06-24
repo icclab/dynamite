@@ -18,7 +18,7 @@ class ScalingEngine(object):
 
     def __init__(self, configuration):
         self._logger = logging.getLogger(__name__)
-        self._logger.info("Initialized scaling engine with configuration %s", str(configuration))
+        self._logger.info("Initialized scaling engine with configuration %s", repr(configuration))
 
         self._services_dictionary = configuration.services_dictionary
         self._metrics_receiver = configuration.metrics_receiver
@@ -50,7 +50,7 @@ class ScalingEngine(object):
                 self._update_running_tasks_registry(executed_tasks)
                 self._resend_failed_messages(executed_tasks)
             except Exception:
-                # TODO: log exception
+                self._logger.exception("Unexpected error in scaling engine occurred!")
                 pass
 
     def _retreive_metrics(self):
@@ -80,8 +80,10 @@ class ScalingEngine(object):
 
     def _add_remove_running_service_based_on_command(self, executor_response):
         if executor_response.command == DynamiteScalingCommand.SCALE_UP:
+            self._logger.info("add running service because got positive response from executor %s", repr(executor_response))
             self._running_services_registry.add_running_service(executor_response.service_name)
         elif executor_response.command == DynamiteScalingCommand.SCALE_DOWN:
+            self._logger.info("remove running service because got positive response from executor %s", repr(executor_response))
             self._running_services_registry.remove_running_service(executor_response.service_name)
         else:
             raise ValueError("Unknown command {}, cannot parse executor response: {}".format(
@@ -94,16 +96,20 @@ class ScalingEngine(object):
             if executor_response.success:
                 continue
             if executor_response.failure_counter <= self.RETRANSMIT_COUNT_OF_FAILED_MESSAGES:
+                self._logger.warn("got failed scaling request notification from executor %s", repr(executor_response))
                 executor_response.failure_counter += 1
                 self._scaling_action_sender.send_action(executor_response)
             else:
                 self._report_failed_scaling_message(executor_response)
 
     def _report_failed_scaling_message(self, executor_response):
-        # TODO: log failed scaling message
-        pass
+        self._logger.error("executor could not handle scaling request %s after retransmitting %d times",
+                           repr(executor_response),
+                           self.RETRANSMIT_COUNT_OF_FAILED_MESSAGES
+                           )
 
     def _on_engine_shutdown(self):
+        self._logger.info("Shutting down scaling engine")
         self._scaling_action_sender.close()
         self._executed_tasks_receiver.close()
 
