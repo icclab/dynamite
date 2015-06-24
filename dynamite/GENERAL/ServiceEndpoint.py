@@ -35,3 +35,6 @@ class ServiceEndpoint:
                 Connection string was {}
             """.format(connection_string)
         )
+
+    def __str__(self):
+        return "ServiceEndpoint(host_ip={}, port={})".format(self.host_ip, self.port)
