@@ -65,37 +65,37 @@ class ScalingPolicy(object):
         predicate_method = self._get_policy_predicate_operation(self._policy_config.comparative_operator)
 
         for metric_value in metrics_message.metric_values:
-            for timestamp, value in metric_value.items():
-                timestamp = dateutil.parser.parse(timestamp)
+            value = metric_value.value
+            timestamp = dateutil.parser.parse(metric_value.timestamp)
 
-                if not self._is_new_metric(timestamp, metrics_message.uuid):
-                    self._logger.debug("metric value %s is outdated for instance %s", repr(metric_value), metrics_message.uuid)
-                    continue
+            if not self._is_new_metric(timestamp, metrics_message.uuid):
+                self._logger.debug("metric value %s is outdated for instance %s", repr(metric_value), metrics_message.uuid)
+                continue
 
-                if self.cooldown_period.is_in_period(timestamp):
-                    self._logger.debug("metric value %s ignored because of cooldown is active", repr(metric_value))
-                    continue
+            if self.cooldown_period.is_in_period(timestamp):
+                self._logger.debug("metric value %s ignored because of cooldown is active", repr(metric_value))
+                continue
 
-                predicate_satisfied = predicate_method(
-                    float(value),
-                    self._policy_config.threshold
-                )
-                self._logger.debug("metric value %s is %s under/over threshold",
-                                   repr(metric_value),
-                                   "" if predicate_satisfied else "not"
-                                   )
+            predicate_satisfied = predicate_method(
+                float(value),
+                self._policy_config.threshold
+            )
+            self._logger.debug("metric value %s is %s under/over threshold",
+                               repr(metric_value),
+                               "" if predicate_satisfied else "not"
+                               )
 
-                action_required = self.state.update_and_report_if_action_required(
-                    self,
-                    predicate_satisfied,
-                    timestamp,
-                    metrics_message.uuid
-                )
-                if action_required:
-                    scaling_action = self._create_scaling_action(metrics_message.metric_name, metrics_message.uuid)
-                    self.cooldown_period.start_period(timestamp)
-                    scaling_actions.append(scaling_action)
-                    self._logger.info("Triggered scaling action %s, beginning cooldown", repr(scaling_action))
+            action_required = self.state.update_and_report_if_action_required(
+                self,
+                predicate_satisfied,
+                timestamp,
+                metrics_message.uuid
+            )
+            if action_required:
+                scaling_action = self._create_scaling_action(metrics_message.metric_name, metrics_message.uuid)
+                self.cooldown_period.start_period(timestamp)
+                scaling_actions.append(scaling_action)
+                self._logger.info("Triggered scaling action %s, beginning cooldown", repr(scaling_action))
 
         return scaling_actions
 
