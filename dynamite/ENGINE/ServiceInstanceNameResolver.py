@@ -17,7 +17,7 @@ class ServiceInstanceNameResolver:
             for uuid_path in service_type_content.children:
                 if uuid_path.endswith(service_uuid):
                     return self._etcd_client.read(uuid_path + "/" + self.INSTANCE_NAME_ETCD_KEY).value
-        raise ValueError("Could not found service instance name of uuid {}".format(service_uuid))
+        return None
 
 class CachingServiceInstanceNameResolver:
     def __init__(self, service_instance_name_resolver):
@@ -34,6 +34,7 @@ class CachingServiceInstanceNameResolver:
             return instance_name
 
         instance_name = self._service_instance_name_resolver.resolve(service_uuid)
-        self._cache_by_uuid[service_uuid] = instance_name
-        self._logger.info("Resolved service instance name %s from uuid %s", instance_name, service_uuid)
+        if instance_name is not None:
+            self._cache_by_uuid[service_uuid] = instance_name
+            self._logger.info("Resolved service instance name %s from uuid %s", instance_name, service_uuid)
         return instance_name

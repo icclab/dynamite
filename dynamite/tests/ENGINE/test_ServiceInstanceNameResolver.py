@@ -75,12 +75,11 @@ class TestCachingServiceInstanceNameReceiver:
         assert result == expected_result
 
     def test_etcd_resolve_nonexisting(self):
-        with pytest.raises(ValueError):
-            etcd_client_mock = Mock()
-            etcd_client_mock.get = self.read_etcd_content
-            etcd_client_mock.read = self.read_etcd_content
-            uuid = "apache-uuid-1"
+        etcd_client_mock = Mock()
+        etcd_client_mock.get = self.read_etcd_content
+        etcd_client_mock.read = self.read_etcd_content
+        uuid = "apache-uuid-1"
 
-            resolver = ServiceInstanceNameResolver(etcd_client_mock)
-            result = resolver.resolve("nonexisting")
-            assert False
+        resolver = ServiceInstanceNameResolver(etcd_client_mock)
+        result = resolver.resolve("nonexisting")
+        assert result is None
