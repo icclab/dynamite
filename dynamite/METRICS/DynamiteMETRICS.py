@@ -81,7 +81,7 @@ class DynamiteMETRICS(Process):
 
         for policy_name, policy in dynamite_config.ScalingPolicy.__dict__.items():
 
-            service_name = policy.service
+            service_name = policy.service_type
             metric_name = policy.metric
 
             double_entry = False
