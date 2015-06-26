@@ -77,6 +77,7 @@ class ScalingEngine(object):
         for executed_task in executed_tasks:
             if executed_task.success:
                 self._add_remove_running_service_based_on_command(executed_task)
+                executed_task.message_processed()
 
     def _add_remove_running_service_based_on_command(self, executor_response):
         if executor_response.command == DynamiteScalingCommand.SCALE_UP:
@@ -99,8 +100,10 @@ class ScalingEngine(object):
                 self._logger.warn("got failed scaling request notification from executor %s", repr(executor_response))
                 executor_response.failure_counter += 1
                 self._scaling_action_sender.send_action(executor_response)
+                executor_response.message_processed()
             else:
                 self._report_failed_scaling_message(executor_response)
+                executor_response.message_processed()
 
     def _report_failed_scaling_message(self, executor_response):
         self._logger.error("executor could not handle scaling request %s after retransmitting %d times",
