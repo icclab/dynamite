@@ -2,17 +2,31 @@ __author__ = 'brnr'
 
 class EtcdServiceMetricInformation(object):
 
-    service_name = None         # from ScalingPolicy.<policy_name>
-    metric_name = []           # from ScalingPolicy.metric
-    metric_base_path = None     # from ETCD.metrics_base_path + service_name
+    service_type = None
+    metric_name = None
     is_aggregated = None
-    uuids = []                  # if not aggregated saves list of uuids
-    etcd_metric_paths = None
+    in_value_path = None
 
-    def __init__(self, service_name, metric_name, metric_base_path, is_aggregated, uuids, etcd_metric_paths):
-        self.service_name = service_name
-        self.metric_name = metric_name
-        self.metric_base_path = metric_base_path
+    def __init__(self, service_type, metric_name, is_aggregated):
+        self.service_type = service_type
         self.is_aggregated = is_aggregated
-        self.uuids = uuids
-        self.etcd_metric_paths = etcd_metric_paths
+
+        if "." in metric_name:
+            self._parse_in_value_path(metric_name)
+        else:
+            self.metric_name = metric_name
+
+    def _parse_in_value_path(self, metric_name):
+        path_parts = metric_name.split(".")
+        if len(path_parts) < 2:
+            raise ValueError("Metric name is not an in-value path {}".format(metric_name))
+        self.metric_name = path_parts[0]
+        self.in_value_path = "".join(path_parts[1:])
+
+    def __repr__(self):
+        return "EtcdServiceMetricInformation(service_type={},metric_name={},is_aggregated={},in_value_path={}".format(
+            self.service_type,
+            self.metric_name,
+            self.is_aggregated,
+            self.in_value_path
+        )
