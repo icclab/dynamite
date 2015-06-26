@@ -13,8 +13,9 @@ class ServiceInstanceNameResolver:
         metrics_directory = self._etcd_client.get(self.METRICS_BASE_URL)
 
         for directory in metrics_directory.children:
-            service_type_content = self._etcd_client.get(directory)
-            for uuid_path in service_type_content.children:
+            service_type_content = self._etcd_client.get(directory.key)
+            for child in service_type_content.children:
+                uuid_path = child.key
                 if uuid_path.endswith(service_uuid):
                     return self._etcd_client.read(uuid_path + "/" + self.INSTANCE_NAME_ETCD_KEY).value
         return None

@@ -30,19 +30,22 @@ class TestCachingServiceInstanceNameReceiver:
 
     def read_etcd_content(self, path):
         path_parts = path.split("/")
-        folder = self.etcd_content
+        folder_or_key = self.etcd_content
         for path_part in path_parts:
             if path_part == "":
                 continue
-            folder = folder[path_part]
+            folder_or_key = folder_or_key[path_part]
 
         result = Mock()
         result.children = []
-        if isinstance(folder, dict):
-            for key, subdict in folder.items():
-                result.children.append(path + "/" + key)
+        if isinstance(folder_or_key, dict):
+            for key, subdict in folder_or_key.items():
+                child = Mock()
+                child.value = None
+                child.key = path + "/" + key
+                result.children.append(child)
         else:
-            result.value = folder
+            result.value = folder_or_key
         return result
 
     def test_cached_resolve(self):
