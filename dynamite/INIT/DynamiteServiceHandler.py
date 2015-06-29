@@ -23,6 +23,22 @@ class DynamiteServiceHandler(object):
     FleetServiceDict = {}
     FleetServiceHandler = None
 
+    _logger = None
+
+    def __init__(self, dynamite_config=None, etcd_endpoint=None):
+
+        self._logger = logging.getLogger(__name__)
+        self._logger.info("Initialized DynamiteServiceHandler")
+
+        if dynamite_config is not None and etcd_endpoint is None:
+            self.FleetServiceDict = self.create_fleet_service_dict_from_dynamite_config_object(dynamite_config)
+
+        elif dynamite_config is not None and etcd_endpoint is not None:
+            self.FleetServiceDict = self.create_fleet_service_dict_from_etcd(etcd_endpoint)
+
+        self.FleetServiceHandler = FleetServiceHandler(dynamite_config.FleetAPIEndpoint.ip,
+                                                       str(dynamite_config.FleetAPIEndpoint.port))
+
     # Takes a >> PATH/unit_file_name << as argument
     # Returns a python list-object (which can then be encoded to json)
     def unit2dict(self, unit_file_w_path):
@@ -78,7 +94,7 @@ class DynamiteServiceHandler(object):
                         multi_line_string = ""
 
                 line = line.rstrip()
-                name,value = line.split("=", 1)
+                name, value = line.split("=", 1)
                 logging.info(name, "=", value)
 
                 option = {}
@@ -238,6 +254,8 @@ class DynamiteServiceHandler(object):
 
                 etcdctl = ETCDCTL.get_etcdctl()
                 etcdctl.write(etcd_instance_key, fleet_service_instance_json)
+
+                return True
             else:
                 return None
         else:
@@ -260,7 +278,7 @@ class DynamiteServiceHandler(object):
                     etcdctl = ETCDCTL.get_etcdctl()
                     etcdctl.delete(etcd_instance_key)
 
-
+            return True
         return None
 
     def save_fleet_service_state_to_etcd(self, fleet_service):
@@ -273,7 +291,6 @@ class DynamiteServiceHandler(object):
         fleet_service_dict_json = json.dumps(fleet_service_dict)
         etcdctl.write(etcd_key, fleet_service_dict_json)
 
-
     # This is only the case when the config was created from a file on the filesystem
     def create_fleet_service_dict_from_dynamite_config_object(self, dynamite_config):
         if not isinstance(dynamite_config, DynamiteConfig):
@@ -285,7 +302,6 @@ class DynamiteServiceHandler(object):
 
         if fleet_service_dict is not None:
             return fleet_service_dict
-
 
     def create_fleet_service_dict_from_etcd(self, etcd_endpoint):
         etcdctl = ETCDCTL.create_etcdctl(etcd_endpoint)
@@ -328,25 +344,6 @@ class DynamiteServiceHandler(object):
 
         else:
             return None
-
-    def __init__(self, dynamite_config=None, etcd_endpoint=None):
-
-        if dynamite_config is not None and etcd_endpoint is None:
-            self.FleetServiceDict = self.create_fleet_service_dict_from_dynamite_config_object(dynamite_config)
-
-        elif dynamite_config is not None and etcd_endpoint is not None:
-            self.FleetServiceDict = self.create_fleet_service_dict_from_etcd(etcd_endpoint)
-
-        self.FleetServiceHandler = FleetServiceHandler(dynamite_config.FleetAPIEndpoint.ip,
-                                                       str(dynamite_config.FleetAPIEndpoint.port))
-
-        #if dynamite_config is not None and etcd_endpoint is None:
-        #    self._initial_start_all_services_to_fleet(self.FleetServiceHandler, self.FleetServiceDict)
-
-
-    def __str__(self):
-        pass
-
 
 if __name__ == '__main__':
 
