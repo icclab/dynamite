@@ -174,7 +174,7 @@ class DynamiteMETRICS(Process):
                 metric_information.service_type,
                 uuid,
                 values,
-                metric_information.metric_name
+                metric_information.get_full_metric_name()
             )
 
             self._logger.debug("Putting metrics message on scaling engine metrics communication queue: {}"

@@ -23,6 +23,11 @@ class EtcdServiceMetricInformation(object):
         self.metric_name = path_parts[0]
         self.in_value_path = ".".join(path_parts[1:])
 
+    def get_full_metric_name(self):
+        if self.in_value_path is not None:
+            return self.metric_name + "." + self.in_value_path
+        return self.metric_name
+
     def __repr__(self):
         return "EtcdServiceMetricInformation(service_type={},metric_name={},is_aggregated={},in_value_path={}".format(
             self.service_type,
