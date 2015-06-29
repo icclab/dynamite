@@ -220,6 +220,11 @@ class DynamiteConfig(object):
                         DynamiteConfig.ScalingPolicyStruct.ScalingPolicyDetailStruct(service_name, service_detail_dict)
                     )
 
+        def get_scaling_policies(self):
+            for policy_name, policy in self.__dict__.items():
+                if not policy_name.startswith("_"):
+                    return policy
+
         def __str__(self):
             return_string = "ServicePolicy Struct:\n" \
                             "\t<Instance Variables>\n"

@@ -1,8 +1,10 @@
 __author__ = 'bloe'
 
 from unittest.mock import Mock, MagicMock
+
 from dynamite.ENGINE.ServiceInstanceNameResolver import CachingServiceInstanceNameResolver, ServiceInstanceNameResolver
-import pytest
+from dynamite.tests.Fakes.FakeEtcdClient import FakeEtcdClient
+
 
 class TestCachingServiceInstanceNameReceiver:
 
@@ -28,26 +30,6 @@ class TestCachingServiceInstanceNameReceiver:
         "metrics": {}
     }
 
-    def read_etcd_content(self, path):
-        path_parts = path.split("/")
-        folder_or_key = self.etcd_content
-        for path_part in path_parts:
-            if path_part == "":
-                continue
-            folder_or_key = folder_or_key[path_part]
-
-        result = Mock()
-        result.children = []
-        if isinstance(folder_or_key, dict):
-            for key, subdict in folder_or_key.items():
-                child = Mock()
-                child.value = None
-                child.key = path + "/" + key
-                result.children.append(child)
-        else:
-            result.value = folder_or_key
-        return result
-
     def test_cached_resolve(self):
         resolver_mock = Mock()
         instance_name = "instance_name_of_service"
@@ -67,9 +49,7 @@ class TestCachingServiceInstanceNameReceiver:
         assert instance_name == result
 
     def test_etcd_resolve(self):
-        etcd_client_mock = Mock()
-        etcd_client_mock.get = self.read_etcd_content
-        etcd_client_mock.read = self.read_etcd_content
+        etcd_client_mock = FakeEtcdClient(self.etcd_content)
         uuid = "apache-uuid-1"
 
         resolver = ServiceInstanceNameResolver(etcd_client_mock)
@@ -78,9 +58,7 @@ class TestCachingServiceInstanceNameReceiver:
         assert result == expected_result
 
     def test_etcd_resolve_nonexisting(self):
-        etcd_client_mock = Mock()
-        etcd_client_mock.get = self.read_etcd_content
-        etcd_client_mock.read = self.read_etcd_content
+        etcd_client_mock = FakeEtcdClient(self.etcd_content)
         uuid = "apache-uuid-1"
 
         resolver = ServiceInstanceNameResolver(etcd_client_mock)

@@ -17,7 +17,6 @@ from dynamite.ENGINE.MetricValue import MetricValue
 class DynamiteMETRICS(Process):
 
     _etcd_endpoint = None
-    _etcdctl = None
 
     _scaling_engine_metrics_communication_queue = None
     _etcd_service_metric_information_instances = []
@@ -31,6 +30,9 @@ class DynamiteMETRICS(Process):
 
     _dynamite_config = None
 
+    configuration = None
+    etcdctl = None
+
     def __init__(self,
                  etcd_endpoint,
                  scaling_engine_metrics_communication_queue):
@@ -42,10 +44,10 @@ class DynamiteMETRICS(Process):
     def run(self):
 
         self._logger = logging.getLogger(__name__)
-        self._dynamite_config = DynamiteConfig(etcd_endpoint=self._etcd_endpoint)
+        self._dynamite_config = self.configuration or DynamiteConfig(etcd_endpoint=self._etcd_endpoint)
         self._logger.info("Initialized DynamiteMETRICS with configuration %s", str(self))
         self._running = True
-        self._etcdctl = self._init_etcdctl(self._etcd_endpoint)
+        self.etcdctl = self.etcdctl or self._init_etcdctl(self._etcd_endpoint)
         self._create_etcd_service_metric_information_instances(self._dynamite_config)
 
         while self._running:
@@ -57,7 +59,7 @@ class DynamiteMETRICS(Process):
         return etcdctl
 
     def _create_etcd_service_metric_information_instances(self, dynamite_config):
-        for policy_name, policy in dynamite_config.ScalingPolicy.__dict__.items():
+        for policy in dynamite_config.ScalingPolicy.get_scaling_policies():
             etcd_service_metric_information = EtcdServiceMetricInformation(
                 policy.service_type,
                 policy.metric,
@@ -105,13 +107,13 @@ class DynamiteMETRICS(Process):
         metrics_path = self._build_etcd_path([path_to_service_type, uuid, metric_name])
 
         try:
-            metric_folder = self._etcdctl.read(metrics_path, recursive=True, sorted=True)
+            metric_folder = self.etcdctl.read(metrics_path, recursive=True, sorted=True)
             values = []
             for timestamp_node in metric_folder.children:
                 if timestamp_node.value is not None:
                     value = self._read_value_from_etcd_node(timestamp_node, metric_information)
                     values.append(value)
-                    self._etcdctl.delete(timestamp_node.key)
+                    self.etcdctl.delete(timestamp_node.key)
             if len(values) > 0:
                 self._create_and_send_metrics_message(metric_information, uuid, values)
             else:
@@ -133,14 +135,14 @@ class DynamiteMETRICS(Process):
         if metric_information.in_value_path is None:
             value = float(value)
         else:
-            value = self._read_value_from_json(value)
+            value = self._read_value_from_json(value, metric_information.in_value_path)
 
         return MetricValue(timestamp, value)
 
     def _read_value_from_json(self, json_string, in_value_path):
         # metric name will be like: response_time.time_backend_response.p95
         json_dict = json.loads(json_string)
-        return self._read_value_from_recursive_dict(json_dict, in_value_path)
+        return json_dict[in_value_path]
 
     def _read_value_from_recursive_dict(self, dict, path):
         path_parts = path.split(".")
@@ -156,7 +158,7 @@ class DynamiteMETRICS(Process):
                 self._dynamite_config.ETCD.metrics_base_path,
                 service_type
             ])
-            uuid_nodes = self._etcdctl.read(service_type_path)
+            uuid_nodes = self.etcdctl.read(service_type_path)
 
             uuid_paths = []
             for uuid_node in uuid_nodes.children:
@@ -178,6 +180,9 @@ class DynamiteMETRICS(Process):
             self._logger.debug("Putting metrics message on scaling engine metrics communication queue: {}"
                                .format(repr(metrics_message)))
             self._scaling_engine_metrics_communication_queue.put(metrics_message)
+
+    def stop(self):
+        self._running = False
 
     def __repr__(self):
         return "DynamiteMETRICS(" \

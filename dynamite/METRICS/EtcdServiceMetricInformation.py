@@ -21,7 +21,7 @@ class EtcdServiceMetricInformation(object):
         if len(path_parts) < 2:
             raise ValueError("Metric name is not an in-value path {}".format(metric_name))
         self.metric_name = path_parts[0]
-        self.in_value_path = "".join(path_parts[1:])
+        self.in_value_path = ".".join(path_parts[1:])
 
     def __repr__(self):
         return "EtcdServiceMetricInformation(service_type={},metric_name={},is_aggregated={},in_value_path={}".format(
