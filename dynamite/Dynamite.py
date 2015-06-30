@@ -63,11 +63,19 @@ class Dynamite:
                 self.DEFAULT_CONFIG_PATH = os.path.dirname(os.path.realpath(__file__)) \
                                       + '\\tests\\TEST_CONFIG_FOLDER\\config.yaml'
                 self.DEFAULT_SERVICE_FOLDER = os.path.dirname(os.path.realpath(__file__)) \
-                                         + '\\tests\\TEST_CONFIG_FOLDER\\service-files'
-        elif platform.system()() == 'Linux':
-            self._logger.debug("Platform is Linux")
-            self.DEFAULT_CONFIG_PATH = '/etc/dynamite/config.yaml'
-            self.DEFAULT_SERVICE_FOLDER = '/etc/dynamite/service-files'
+                                              + '\\tests\\TEST_CONFIG_FOLDER\\service-files'
+        elif platform.system() == 'Linux' or platform.system() == 'Darwin':
+            self._logger.debug("Platform is " + platform.system())
+            self._logger.debug("Environment is %s", str(self.DYNAMITE_ENVIRONMENT))
+
+            if self.DYNAMITE_ENVIRONMENT == DYNAMITE_ENVIRONMENT_STRUCT.PRODUCTION:
+                self.DEFAULT_CONFIG_PATH = '/etc/dynamite/config.yaml'
+                self.DEFAULT_SERVICE_FOLDER = '/etc/dynamite/service-files'
+            elif self.DYNAMITE_ENVIRONMENT == DYNAMITE_ENVIRONMENT_STRUCT.DEVELOPMENT:
+                self.DEFAULT_CONFIG_PATH = os.path.dirname(os.path.realpath(__file__)) \
+                                      + '/tests/TEST_CONFIG_FOLDER/config.yaml'
+                self.DEFAULT_SERVICE_FOLDER = os.path.dirname(os.path.realpath(__file__)) \
+                                         + '/tests/TEST_CONFIG_FOLDER/service-files'
 
         self._logger.info("Default config path is %s", self.DEFAULT_CONFIG_PATH)
         self._logger.info("Default service folder path is %s", self.DEFAULT_SERVICE_FOLDER)
