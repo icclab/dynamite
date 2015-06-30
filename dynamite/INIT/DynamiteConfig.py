@@ -39,7 +39,10 @@ class DynamiteConfig(object):
             return checked_list_of_abs_paths
 
         def __init__(self, PathList):
-            self.PathList = self.init_pathlist(PathList) if len(PathList) != 0 else None
+            if PathList is not None:
+                self.PathList = self.init_pathlist(PathList)
+            else:
+                return None
 
         def __str__(self):
             return "ServiceFiles Struct:\n" \
@@ -297,15 +300,19 @@ class DynamiteConfig(object):
         # Combine the 2 lists containing paths to the service files
         if arg_service_folder_list:
             if self.ServiceFiles.PathList != arg_service_folder_list:
-                path_set_a = set(self.ServiceFiles.PathList)
-                path_set_b = set(arg_service_folder_list)
+                if self.ServiceFiles.PathList is not None:
+                    path_set_a = set(self.ServiceFiles.PathList)
+                    path_set_b = set(arg_service_folder_list)
 
-                self.ServiceFiles.PathList = list(path_set_a)+list(path_set_b-path_set_a)
+                    self.ServiceFiles.PathList = list(path_set_a)+list(path_set_b-path_set_a)
+                else:
+                    self.ServiceFiles.PathList = arg_service_folder_list
 
         # check if Folders in ServiceFiles-->PathList exit
-        for folder in self.ServiceFiles.PathList:
-            if not os.path.isdir(folder):
-                raise NotADirectoryError("Error: " + folder + " is not a valid directory")
+        if self.ServiceFiles.PathList is not None:
+            for folder in self.ServiceFiles.PathList:
+                if not os.path.isdir(folder):
+                    raise NotADirectoryError("Error: " + folder + " is not a valid directory")
 
         IP = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['ip']
         Port = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['port']
