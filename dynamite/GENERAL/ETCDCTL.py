@@ -69,7 +69,7 @@ def create_etcdctl(etcd_endpoint):
         if test_connection(etcd_base_url):
             etcdctl = etcd.Client(ip, int(port))
         else:
-            raise ConnectionError("Error connecting to ETCD. Check if Endpoint is correct: " + ip_address + ":" + port_number)
+            raise ConnectionError("Error connecting to ETCD. Check if Endpoint is correct: " + ip + ":" + str(port))
 
         if etcdctl is not None:
             return etcdctl
