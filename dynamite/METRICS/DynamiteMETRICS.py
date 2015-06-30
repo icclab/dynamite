@@ -9,6 +9,7 @@ from multiprocessing import Process
 
 from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
 from dynamite.GENERAL import ETCDCTL
+from dynamite.GENERAL.EtcdHelper import EtcdHelper
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
 from dynamite.METRICS.EtcdServiceMetricInformation import EtcdServiceMetricInformation
 from dynamite.ENGINE.MetricsMessage import MetricsMessage
@@ -73,38 +74,19 @@ class DynamiteMETRICS(Process):
 
     def _get_metrics_from_service_type(self, metric_information):
         if metric_information.is_aggregated:
-            path = self._build_etcd_path([self._dynamite_config.ETCD.metrics_base_path, metric_information.service_type])
+            path = EtcdHelper.build_etcd_path([self._dynamite_config.ETCD.metrics_base_path, metric_information.service_type])
             self._get_metrics_from_instance("", path, metric_information)
         else:
             uuid_paths = self._get_instance_uuid_paths(metric_information.service_type)
             for uuid_path in uuid_paths:
                 uuid = self._get_key_name_from_etcd_path(uuid_path)
-                path = self._build_etcd_path([self._dynamite_config.ETCD.metrics_base_path, metric_information.service_type])
+                path = EtcdHelper.build_etcd_path([self._dynamite_config.ETCD.metrics_base_path, metric_information.service_type])
                 self._get_metrics_from_instance(uuid, path, metric_information)
-
-    @staticmethod
-    def _build_etcd_path(path_parts):
-        if len(path_parts) < 1:
-            raise ValueError("To build an etcd path you have to define at least one part of the path!")
-        if len(path_parts) == 1:
-            return path_parts[0]
-        else:
-            path = path_parts[0]
-            path_parts = path_parts[1:]
-            for path_part in path_parts:
-                if not path.endswith("/"):
-                    path += "/"
-                path += path_part
-
-            if path.endswith("/"):
-                path = path[0:-1]
-
-            return path
 
     def _get_metrics_from_instance(self, uuid, path_to_service_type, metric_information):
         metric_name = metric_information.metric_name
 
-        metrics_path = self._build_etcd_path([path_to_service_type, uuid, metric_name])
+        metrics_path = EtcdHelper.build_etcd_path([path_to_service_type, uuid, metric_name])
 
         try:
             metric_folder = self.etcdctl.read(metrics_path, recursive=True, sorted=True)
@@ -154,7 +136,7 @@ class DynamiteMETRICS(Process):
 
     def _get_instance_uuid_paths(self, service_type):
         try:
-            service_type_path = self._build_etcd_path([
+            service_type_path = EtcdHelper.build_etcd_path([
                 self._dynamite_config.ETCD.metrics_base_path,
                 service_type
             ])
