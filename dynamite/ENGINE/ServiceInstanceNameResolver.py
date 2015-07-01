@@ -17,7 +17,8 @@ class ServiceInstanceNameResolver:
             for child in service_type_content.children:
                 uuid_path = child.key
                 if uuid_path.endswith(service_uuid):
-                    return self._etcd_client.read(uuid_path + "/" + self.INSTANCE_NAME_ETCD_KEY).value
+                    instance_name = self._etcd_client.read(uuid_path + "/" + self.INSTANCE_NAME_ETCD_KEY).value
+                    return instance_name + ".service"
         return None
 
 class CachingServiceInstanceNameResolver:

@@ -54,7 +54,7 @@ class TestCachingServiceInstanceNameReceiver:
 
         resolver = ServiceInstanceNameResolver(etcd_client_mock)
         result = resolver.resolve(uuid)
-        expected_result = "apache_instance_name_1"
+        expected_result = "apache_instance_name_1.service"
         assert result == expected_result
 
     def test_etcd_resolve_nonexisting(self):
