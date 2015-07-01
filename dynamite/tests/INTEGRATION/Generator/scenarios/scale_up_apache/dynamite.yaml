@@ -1,0 +1,51 @@
+---
+Dynamite:
+  ServiceFiles:
+    PathList:
+      - 'C:\Projects\CNA\dynamite\dynamite\tests\INTEGRATION\Generator\service-files'
+  FleetAPIEndpoint:
+    ip: 127.0.0.1
+    port: 49153
+  ETCD:
+    # ip_api_endpoint: 127.0.0.1
+    # port_api_endpoint: 4001
+    application_base_path: /services
+    metrics_base_path: /metrics
+  Service:
+    example:
+      name_of_unit_file: loadbalancer.service
+      type: loadbalancer
+    webserver:
+      name_of_unit_file: webserver@.service
+      type: webserver
+      min_instance: 2
+      max_instance: 5
+      base_instance_prefix_number: 8080
+      ports_per_instance: 1
+      scale_up_policy:
+        ScalingPolicy: scale_up
+      scale_down_policy:
+        ScalingPolicy: scale_down
+  ScalingPolicy:
+    scale_up:
+      service_type: loadbalancer
+      metric: response_time.time_backend_response.p95
+      metric_aggregated: true
+      comparative_operator: gt
+      threshold: 250
+      threshold_unit: micro_second
+      period: 30
+      period_unit: second
+      cooldown_period: 1
+      cooldown_period_unit: minute
+    scale_down:
+      service_type: webserver
+      metric: cpu_user
+      metric_aggregated: false
+      comparative_operator: lt
+      threshold: 30
+      threshold_unit: percent
+      period: 60
+      period_unit: second
+      cooldown_period: 1
+      cooldown_period_unit: minute

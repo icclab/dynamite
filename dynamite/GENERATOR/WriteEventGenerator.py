@@ -8,13 +8,7 @@ class WriteEventGenerator:
     def __init__(self):
         pass
 
-    def create_events_for_resources(self, resources):
-        events = []
-        for resource in resources:
-            events.extend(self._create_events_for_resource(resource))
-        return events
-
-    def _create_events_for_resource(self, resource):
+    def create_events_for_resource(self, resource):
         events = []
         for phase in resource.phases:
             events.extend(self._create_events_for_phase(phase, resource))

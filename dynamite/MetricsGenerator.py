@@ -1,7 +1,11 @@
 __author__ = 'bloe'
 
-import argparse
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+
+import argparse
+import time
 
 from dynamite.GENERATOR.Configuration.MetricsGeneratorConfiguration import MetricsGeneratorConfiguration
 from dynamite.GENERATOR.WriteEventGenerator import WriteEventGenerator
@@ -26,6 +30,7 @@ class MetricsGenerator:
         self._generate()
         writer = EventWriter(self._configuration)
         self._register_services(writer)
+        self._sort_events_by_time()
         self._write_events(writer)
 
     def _parse_arguments(self):
@@ -48,15 +53,22 @@ class MetricsGenerator:
 
     def _generate(self):
         event_generator = WriteEventGenerator()
-        self._generated_events = event_generator.create_events_for_resources(self._configuration.resources)
+
+        for resource in self._configuration.resources:
+            self._generated_events.extend(event_generator.create_events_for_resource(resource))
 
     def _register_services(self, event_writer):
         for resource in self._configuration.resources:
             event_writer.register_service(resource)
 
+    def _sort_events_by_time(self):
+        self._generated_events.sort(key=lambda event: event.time)
+
     def _write_events(self, event_writer):
         for event in self._generated_events:
             event_writer.write_event(event)
+            time.sleep(1)
+
 
 if __name__ == '__main__':
     generator = MetricsGenerator()

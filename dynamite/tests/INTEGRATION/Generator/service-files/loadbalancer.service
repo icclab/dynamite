@@ -1,0 +1,8 @@
+[Unit]
+Description=Load balancer
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+ExecStart=/bin/sh -c "while true; do echo Loadbalancer %i running; sleep 10; done"

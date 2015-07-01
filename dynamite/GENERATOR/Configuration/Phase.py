@@ -20,7 +20,7 @@ class Phase:
         phase.duration_seconds = ConfigurationHelper.dict_value_or_default(dictionary, "duration_seconds", 60)
         phase.min_value = ConfigurationHelper.dict_value_or_default(dictionary, "min_value", 0)
         phase.max_value = ConfigurationHelper.dict_value_or_default(dictionary, "max_value", 100)
-        if previous_phase is None:
+        if "start_time" in dictionary or previous_phase is None:
             start_time_string = ConfigurationHelper.dict_value_or_fail(
                 dictionary,
                 "start_time",
