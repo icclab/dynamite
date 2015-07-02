@@ -7,6 +7,7 @@ from dynamite.GENERAL.FleetService import FleetService, FLEET_STATE_STRUCT
 from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
 
 
+# TODO: Mind almost every method in this class to use attached_services instead of service_announcer
 class FleetServiceHandler(object):
 
     # Instance Variables
@@ -45,6 +46,7 @@ class FleetServiceHandler(object):
         if not isinstance(fleet_service_instance, FleetService.FleetServiceInstance):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService.FleetServiceInstance>")
 
+        # TODO: Submit all attached_services instead
         if fleet_service_instance.service_announcer:
             self.submit(fleet_service.service_announcer, fleet_service_instance.service_announcer)
 
@@ -76,6 +78,7 @@ class FleetServiceHandler(object):
         if fleet_service_instance.state is not None:
 
             # Destroy Service announcer if one should exist
+            # TODO: Destroy all attached services instead
             if fleet_service_instance.service_announcer:
                 self.destroy(fleet_service_instance.service_announcer)
 
@@ -190,6 +193,7 @@ class FleetServiceHandler(object):
             return None
 
     # This function expects the parent service / the service definition
+    # TODO: Replace service_announcer. Iterate and create fleet_service_instance for every attached service
     def create_new_fleet_service_instance(self, fleet_service, port_numbers=None, is_announcer=False):
 
         if fleet_service is None or not isinstance(fleet_service, FleetService):
@@ -280,7 +284,6 @@ class FleetServiceHandler(object):
                 instance_number = int(instance_number[0])
 
             else:
-                # TODO: Get latest instance number. Build up fleet_service_instance_name.
                 try:
                     instance_number_index = fleet_service.used_port_numbers.index(0)
                     instance_number = fleet_service.used_port_numbers[instance_number_index - 1]

@@ -28,7 +28,6 @@ class DynamiteServiceHandler(object):
     def __init__(self, dynamite_config=None, etcd_endpoint=None):
 
         self._logger = logging.getLogger(__name__)
-        self._logger.info("Initialized DynamiteServiceHandler")
 
         if dynamite_config is not None and etcd_endpoint is None:
             self.FleetServiceDict = self.create_fleet_service_dict_from_dynamite_config_object(dynamite_config)
@@ -38,6 +37,8 @@ class DynamiteServiceHandler(object):
 
         self.FleetServiceHandler = FleetServiceHandler(dynamite_config.FleetAPIEndpoint.ip,
                                                        str(dynamite_config.FleetAPIEndpoint.port))
+
+        self._logger.info("Initialized DynamiteServiceHandler")
 
     # Takes a >> PATH/unit_file_name << as argument
     # Returns a python list-object (which can then be encoded to json)
@@ -127,14 +128,16 @@ class DynamiteServiceHandler(object):
         if not isinstance(dynamite_config, DynamiteConfig):
             raise IllegalArgumentError("Error: Argument not instance of type 'DynamiteConfig'")
 
-        # Collect necessary information of services defined in 'config.yaml' file and save them in 'service_dict' dictionary
+        # Collect necessary information of services defined in 'config.yaml' file and save them in 'service_dict'
+        # dictionary
         service_dict = {}
         for service_attributes in dynamite_config.Service.__dict__.values():
             service_dict[service_attributes.name] = {"service_name": service_attributes.name,
                                                      "name_of_unit_file": service_attributes.name_of_unit_file,
                                                      "service_details": service_attributes}
 
-        # Create a dictionary (file --> path) of the files contained in the folder in dynamite_config.ServiceFiles.PathList
+        # Create a dictionary (file --> path) of the files contained in the folder(s) in
+        # dynamite_config.ServiceFiles.PathList
         dict_of_files = {}
         for service_file_folder in dynamite_config.ServiceFiles.PathList:
             list_of_files = os.listdir(service_file_folder)
@@ -155,6 +158,10 @@ class DynamiteServiceHandler(object):
         # If the file exits a new FleetService gets created
         #   If the file/service uses a 'Service_Announcer' a FleetService for the Service_Announcer gets created and
         #   attached to the 'original/parent' FleetService
+
+        # TODO: To implement 'attached_services' go through all services defined in the service_dict and after doing
+        #       that attach the services as defined in the DynamiteConfig. The attached service should be saved in a
+        #       list or dictionary
         for service_name, service_info_dict in service_dict.items():
 
             name_of_unit_file = service_info_dict["name_of_unit_file"]
@@ -164,9 +171,6 @@ class DynamiteServiceHandler(object):
                 service_details = service_info_dict["service_details"]
                 path_to_unit_file = dict_of_files[name_of_unit_file]
                 json_dict = self.unit2dict(path_to_unit_file)
-
-                # print(service_details.name)
-                # print(service_details.name_of_unit_file)
 
                 service_is_template = True if "@" in service_details.name_of_unit_file else False
                 service_announcer_fleet_service = None

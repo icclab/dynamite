@@ -91,6 +91,7 @@ class DynamiteConfig(object):
     class ServiceStruct(object):
 
         class ServiceDetailStruct(object):
+            # TODO: Add attached_services variable. Mind '__init__' 'to_dict' and 'dict_to_instance_methods'
             # Instance Variables
             name = None
             name_of_unit_file = None
@@ -103,6 +104,19 @@ class DynamiteConfig(object):
             service_dependency = None
             scale_up_policy = None
             scale_down_policy = None
+
+            def __init__(self, name, service_detail_dict):
+                self.name = name
+                self.name_of_unit_file = service_detail_dict['name_of_unit_file'] if 'name_of_unit_file' in service_detail_dict else None
+                self.type = service_detail_dict['type'] if 'type' in service_detail_dict else None
+                self.min_instance = service_detail_dict['min_instance'] if 'min_instance' in service_detail_dict else None
+                self.max_instance = service_detail_dict['max_instance'] if 'max_instance' in service_detail_dict else None
+                self.base_instance_prefix_number = service_detail_dict['base_instance_prefix_number'] if 'base_instance_prefix_number' in service_detail_dict else None
+                self.ports_per_instance = service_detail_dict['ports_per_instance'] if 'ports_per_instance' in service_detail_dict else None
+                self.service_announcer = service_detail_dict['service_announcer'] if 'service_announcer' in service_detail_dict else None
+                self.service_dependency = service_detail_dict['service_dependency'] if 'service_dependency' in service_detail_dict else None
+                self.scale_up_policy = service_detail_dict['scale_up_policy'] if 'scale_up_policy' in service_detail_dict else None
+                self.scale_down_policy = service_detail_dict['scale_down_policy'] if 'scale_down_policy' in service_detail_dict else None
 
             def to_dict(self):
                 service_detail_json = {}
@@ -123,19 +137,6 @@ class DynamiteConfig(object):
                                                                                                   service_detail_struct_dict)
 
                 return service_detail_struct_instance
-
-            def __init__(self, name, service_detail_dict):
-                self.name = name
-                self.name_of_unit_file = service_detail_dict['name_of_unit_file'] if 'name_of_unit_file' in service_detail_dict else None
-                self.type = service_detail_dict['type'] if 'type' in service_detail_dict else None
-                self.min_instance = service_detail_dict['min_instance'] if 'min_instance' in service_detail_dict else None
-                self.max_instance = service_detail_dict['max_instance'] if 'max_instance' in service_detail_dict else None
-                self.base_instance_prefix_number = service_detail_dict['base_instance_prefix_number'] if 'base_instance_prefix_number' in service_detail_dict else None
-                self.ports_per_instance = service_detail_dict['ports_per_instance'] if 'ports_per_instance' in service_detail_dict else None
-                self.service_announcer = service_detail_dict['service_announcer'] if 'service_announcer' in service_detail_dict else None
-                self.service_dependency = service_detail_dict['service_dependency'] if 'service_dependency' in service_detail_dict else None
-                self.scale_up_policy = service_detail_dict['scale_up_policy'] if 'scale_up_policy' in service_detail_dict else None
-                self.scale_down_policy = service_detail_dict['scale_down_policy'] if 'scale_down_policy' in service_detail_dict else None
 
             def __str__(self):
                 return_string = "ServiceDetail Struct:\n" \
