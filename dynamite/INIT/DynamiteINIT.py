@@ -52,8 +52,8 @@ class DynamiteINIT(object):
 
     def __repr__(self):
         return "DynamiteINIT(" \
-               "arg_config_path='{}'" \
-               "arg_service_folder='{}'" \
+               "arg_config_path='{}'," \
+               "arg_service_folder='{}'," \
                "arg_etcd_endpoint='{}'".format(self._arg_config_path,
                                                self._arg_service_folder,
                                                self._arg_etcd_endpoint)
