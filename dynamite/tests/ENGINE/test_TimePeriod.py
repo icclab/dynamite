@@ -2,6 +2,7 @@ __author__ = 'bloe'
 
 from dynamite.ENGINE.TimePeriod import TimePeriod
 from datetime import datetime, timedelta
+import pytest
 
 class TestTimePeriod:
 
@@ -101,3 +102,17 @@ class TestTimePeriod:
 
         assert period.period_start_time is None
         assert period.period_started is False
+
+    def test_calculate_period_end(self):
+        period = TimePeriod(1000)
+        start_time = self._get_time1()
+        period.start_period(start_time)
+        period_end = period.calculate_period_end()
+        expected_end_time = start_time + timedelta(seconds=1000)
+        assert period_end == expected_end_time
+
+    def test_calculate_period_end_with_unstarted_period(self):
+        with pytest.raises(ValueError):
+            period = TimePeriod(1000)
+            period_end = period.calculate_period_end()
+            assert period_end is None

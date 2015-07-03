@@ -1,6 +1,6 @@
 __author__ = 'bloe'
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class TimePeriod:
     def __init__(self, period_length_in_seconds, time_provider=datetime.now):
@@ -14,10 +14,7 @@ class TimePeriod:
 
     def start_period(self, time=None):
         self.period_started = True
-        if time is None:
-            self.period_start_time = self._get_current_time()
-        else:
-            self.period_start_time = time
+        self.period_start_time = time or self._get_current_time()
 
     def is_in_period(self, time=None):
         if not self.period_started:
@@ -28,6 +25,11 @@ class TimePeriod:
         else:
             time_difference = time - self.period_start_time
             return time_difference.total_seconds() <= self.period_length_in_seconds
+
+    def calculate_period_end(self):
+        if not self.period_started:
+            raise ValueError("Cannot calculate end of period because period has not been started yet!")
+        return self.period_start_time + timedelta(seconds=self.period_length_in_seconds)
 
     def reset(self):
         self.period_started = False

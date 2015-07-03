@@ -8,6 +8,13 @@
 - 3 Webservers
 - 1 loadbalancer
 
+The first thing being done is to scale up the webservers. This has to be done
+to allow scale down webservers afterwards. Otherwise the min_instance of the service definition 
+would not allow downscaling.   
+So the setup before testing down scaling is:
+- 5 Webservers
+- 1 load balancer
+
 ## Test 1: Phases
 ### Scale up apache (2x)
 - Webserver
@@ -51,3 +58,9 @@ Nothing should happen because everything happens during cooldown period
 
 #### Expected Action
 Webserver instance 8082 should be removed because cooldown period is over and scale down rule is triggered
+
+## Expected Result after test
+Running instances:
+- webserver@8081
+- webserver@8083
+- webserver@8084

@@ -1,5 +1,7 @@
 __author__ = 'bloe'
 
+import logging
+from dynamite.GENERAL.Retry import retry
 from dynamite.GENERAL import ETCDCTL
 from dynamite.GENERAL.EtcdHelper import EtcdHelper
 
@@ -26,6 +28,7 @@ class EventWriter:
             "service_instance_name"
         ])
 
+    @retry(Exception, tries=25, delay=1, backoff=2, logger=logging.getLogger(__name__))
     def write_event(self, event):
         metrics_path = self._build_metrics_path(event)
         self._etcdctl.set(metrics_path, event.value)

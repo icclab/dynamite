@@ -71,17 +71,17 @@ class TestRuleChecker:
         "apache-uuid",
         [
             # no scaling because threshold period
-            MetricValue("2015-06-18T08:01:14.632Z", "29.1"),
-            MetricValue("2015-06-18T08:01:15.632Z", "29.2"),
-            MetricValue("2015-06-18T08:01:16.632Z", "30.1"),
-            MetricValue("2015-06-18T08:01:17.632Z", "29.2"),
-            MetricValue("2015-06-18T08:01:20.632Z", "29.15"),
-            MetricValue("2015-06-18T08:01:25.632Z", "28.3"),
-            MetricValue("2015-06-18T08:01:50.632Z", "29.25"),
-            MetricValue("2015-06-18T08:02:15.632Z", "28.7"),
-            MetricValue("2015-06-18T08:02:25.632Z", "30.8"),
-            MetricValue("2015-06-18T08:02:35.632Z", "29.9"),
-            MetricValue("2015-06-18T08:02:45.632Z", "29.0"),
+            MetricValue("2015-06-18T08:01:54.632Z", "29.1"),
+            MetricValue("2015-06-18T08:01:55.632Z", "29.2"),
+            MetricValue("2015-06-18T08:01:56.632Z", "30.1"),
+            MetricValue("2015-06-18T08:01:57.632Z", "29.2"),
+            MetricValue("2015-06-18T08:02:00.632Z", "29.15"),
+            MetricValue("2015-06-18T08:02:05.632Z", "28.3"),
+            MetricValue("2015-06-18T08:02:30.632Z", "29.25"),
+            MetricValue("2015-06-18T08:02:55.632Z", "28.7"),
+            MetricValue("2015-06-18T08:02:56.632Z", "30.8"),
+            MetricValue("2015-06-18T08:03:15.632Z", "29.9"),
+            MetricValue("2015-06-18T08:03:25.632Z", "29.0"),
         ],
         "cpu_utilization"
     )
@@ -162,11 +162,36 @@ class TestRuleChecker:
         ],
         "response_time"
     )
+    message_double_scaleup_action = MetricsMessage(
+        "apache",
+        "apache-uuid",
+        [
+            # scaling because > 500 for 60s
+            MetricValue("2015-06-18T07:58:14.632Z", "500.1"),
+            MetricValue("2015-06-18T07:58:15.632Z", "500.2"),
+            MetricValue("2015-06-18T07:58:16.632Z", "500.2"),
+            MetricValue("2015-06-18T07:58:17.632Z", "500.2"),
+            MetricValue("2015-06-18T07:58:20.632Z", "500.15"),
+            MetricValue("2015-06-18T07:58:25.632Z", "500.3"),
+            MetricValue("2015-06-18T07:58:50.632Z", "500.25"),
+            MetricValue("2015-06-18T07:59:15.632Z", "500.7"),
+            MetricValue("2015-06-18T07:59:25.632Z", "500.8"),
+            MetricValue("2015-06-18T07:59:35.632Z", "500.9"),
+            MetricValue("2015-06-18T07:59:45.632Z", "501.0"),
+            # wait for 2 minutes (cooldown)
+            MetricValue("2015-06-18T08:01:20.632Z", "500.1"),
+            MetricValue("2015-06-18T08:01:30.632Z", "500.2"),
+            MetricValue("2015-06-18T08:01:50.632Z", "500.2"),
+            MetricValue("2015-06-18T08:02:00.632Z", "500.2"),
+            MetricValue("2015-06-18T08:02:21.632Z", "500.15")
+        ],
+        "response_time"
+    )
 
     scale_up_policy_details = DynamiteConfig.ScalingPolicyStruct.ScalingPolicyDetailStruct(
         "scale_down",
         {
-            "service": "apache",
+            "service_type": "apache",
             "metric": "cpu_utilization",
             "comparative_operator": "lt",
             "threshold": 30,
@@ -180,7 +205,7 @@ class TestRuleChecker:
     scale_down_policy_details = DynamiteConfig.ScalingPolicyStruct.ScalingPolicyDetailStruct(
         "scale_up",
         {
-            "service": "apache",
+            "service_type": "apache",
             "metric": "response_time",
             "comparative_operator": "gt",
             "threshold": 500,
@@ -245,3 +270,20 @@ class TestRuleChecker:
 
         result = ruleChecker.check_and_return_needed_scaling_actions(self.message_scaleup_noaction2)
         assert result == []
+
+    def test_check_and_return_needed_scaling_actions_with_double_scaleup_metrics(self):
+        ruleChecker = RuleChecker(self.scaling_policies, self.service_dictionary)
+
+        result = ruleChecker.check_and_return_needed_scaling_actions(self.message_double_scaleup_action)
+        assert result is not None and result != []
+        assert len(result) == 2
+        result_scaleup1 = result[0]
+        result_scaleup2 = result[1]
+        assert result_scaleup1.service_name == self.message_double_scaleup_action.service_name
+        assert result_scaleup1.uuid == self.message_double_scaleup_action.uuid
+        assert result_scaleup1.command == DynamiteScalingCommand.SCALE_UP
+
+        assert result_scaleup2.service_name == self.message_double_scaleup_action.service_name
+        assert result_scaleup2.uuid == self.message_double_scaleup_action.uuid
+        assert result_scaleup2.command == DynamiteScalingCommand.SCALE_UP
+

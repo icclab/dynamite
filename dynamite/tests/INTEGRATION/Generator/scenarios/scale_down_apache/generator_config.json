@@ -21,6 +21,11 @@
               "duration_seconds": 31,
               "min_value": 0,
               "max_value": 30
+          },
+          {
+              "duration_seconds": 1,
+              "min_value": 50,
+              "max_value": 100
           }
         ]
       },
