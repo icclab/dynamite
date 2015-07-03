@@ -9,6 +9,7 @@ from multiprocessing import Process
 
 from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
 from dynamite.GENERAL import ETCDCTL
+from dynamite.GENERAL.Retry import retry
 from dynamite.GENERAL.EtcdHelper import EtcdHelper
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
 from dynamite.METRICS.EtcdServiceMetricInformation import EtcdServiceMetricInformation
@@ -95,13 +96,17 @@ class DynamiteMETRICS(Process):
                 if timestamp_node.value is not None:
                     value = self._read_value_from_etcd_node(timestamp_node, metric_information)
                     values.append(value)
-                    self.etcdctl.delete(timestamp_node.key)
+                    self._delete_key_in_etcd(timestamp_node.key)
             if len(values) > 0:
                 self._create_and_send_metrics_message(metric_information, uuid, values)
             else:
                 self._logger.debug("No metrics found for metric {} in path {}".format(metric_name, metrics_path))
         except etcd.EtcdKeyNotFound:
             self._logger.debug("Could not find etcd key of metric %s in path %s", metric_name, metrics_path)
+
+    @retry(Exception, tries=5, delay=1, backoff=2, logger=logging.getLogger(__name__))
+    def _delete_key_in_etcd(self, key):
+        self.etcdctl.delete(key)
 
     @staticmethod
     def _get_key_name_from_etcd_path(path):

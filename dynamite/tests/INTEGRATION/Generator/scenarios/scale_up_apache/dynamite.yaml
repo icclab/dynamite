@@ -45,7 +45,7 @@ Dynamite:
       comparative_operator: lt
       threshold: 30
       threshold_unit: percent
-      period: 60
+      period: 30
       period_unit: second
       cooldown_period: 1
       cooldown_period_unit: minute

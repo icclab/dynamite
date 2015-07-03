@@ -1,0 +1,81 @@
+{
+    "metrics_base_path": "/metrics",
+    "services_base_path": "/services",
+    "write_interval": 10,
+    "etcd_endpoint": "127.0.0.1:4001",
+    "resources": [
+      {
+        "service_type": "webserver",
+        "instance_uuid": "generate",
+        "write_interval": 10,
+        "metric_name": "cpu_user",
+        "instance_name": "webserver@8080",
+        "phases": [
+          {
+              "start_time": "2015-06-22T14:54:12.319Z",
+              "duration_seconds": 31,
+              "min_value": 30.1,
+              "max_value": 100
+          }
+        ]
+      },
+      {
+        "service_type": "webserver",
+        "instance_uuid": "generate",
+        "write_interval": 10,
+        "metric_name": "cpu_user",
+        "instance_name": "webserver@8081",
+        "phases": [
+          {
+              "start_time": "2015-06-22T14:54:12.319Z",
+              "duration_seconds": 31,
+              "min_value": 30.1,
+              "max_value": 100
+          }
+        ]
+      },
+      {
+        "service_type": "loadbalancer",
+        "instance_uuid": "none",
+        "write_interval": 1,
+        "metric_name": "response_time",
+        "metric_value_template": "{\"@version\":\"1\",\"@timestamp\":\"2015-06-22T14:54:12.319Z\",\"message\":\"0a556865a3d9\",\"time_backend_response.count\":9,\"time_backend_response.rate_1m\":0.0,\"time_backend_response.rate_5m\":0.0,\"time_backend_response.rate_15m\":0.0,\"time_backend_response.min\":0.0,\"time_backend_response.max\":699.0,\"time_backend_response.stddev\":16.57579754980927,\"time_backend_response.mean\":224.22222222222223,\"time_backend_response.p1\":0.0,\"time_backend_response.p5\":0.0,\"time_backend_response.p10\":0.0,\"time_backend_response.p90\":699.0,\"time_backend_response.p95\":%value%,\"time_backend_response.p99\":699.0,\"time_backend_response.p100\":699.0,\"metric_period\":\"short_term\",\"tags\":[\"metric\",\"shortterm\",\"_grokparsefailure\"]}",
+        "instance_name": "loadbalancer@80",
+        "phases": [
+          {
+              "start_time": "2015-06-22T14:54:12.319Z",
+              "duration_seconds": 60,
+              "min_value": 10,
+              "max_value": 249.9
+          },
+          {
+              "duration_seconds": 31,
+              "min_value": 250.1,
+              "max_value": 1000
+          },
+          {
+              "duration_seconds": 50,
+              "min_value": 1250.1,
+              "max_value": 2000
+          },
+          {
+              "duration_seconds": 20,
+              "min_value": 10,
+              "max_value": 249.9
+          },
+          {
+              "duration_seconds": 31,
+              "min_value": 250.1,
+              "max_value": 1249.9
+          },
+          {
+              "duration_seconds": 1,
+              "min_value": 3000,
+              "max_value": 3000
+          }
+        ]
+      }
+    ]
+
+
+}
