@@ -17,7 +17,6 @@ from dynamite.GENERAL.FleetService import FleetService
 
 from dynamite.GENERAL import ETCDCTL
 
-# TODO: get all the running services from etcd
 etcdctl = ETCDCTL.create_etcdctl("127.0.0.1:4001")
 
 class Test(object):
