@@ -20,12 +20,21 @@ Dynamite:
       type: webserver
       min_instance: 3
       max_instance: 5
+      attached_service:
+        - webserver_announcer
+        - webserver_logger
       base_instance_prefix_number: 8080
       ports_per_instance: 1
       scale_up_policy:
         ScalingPolicy: scale_up
       scale_down_policy:
         ScalingPolicy: scale_down
+    webserver_announcer:
+      name_of_unit_file: webserver_announcer@.service
+      type: service_announcer
+    webserver_logger:
+      name_of_unit_file: webserver_logger@.service
+      type: service_announcer
   ScalingPolicy:
     scale_up:
       service_type: loadbalancer

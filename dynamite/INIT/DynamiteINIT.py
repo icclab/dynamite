@@ -146,6 +146,7 @@ class DynamiteINIT(object):
                     del fleet_service_dict['fleet_service_instances'][fleet_service_instance_name]
 
             etcd_template_key = etcd_base_key + "/" + ETCDCTL.etcd_name_fleet_service_template
+            # fleet_service_dict["attached_services"] = []
             self.etcdctl.write(etcd_template_key, json.dumps(fleet_service_dict))
 
         self._set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.RUNNING)

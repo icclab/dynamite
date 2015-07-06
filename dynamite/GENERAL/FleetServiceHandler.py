@@ -6,8 +6,6 @@ import json
 from dynamite.GENERAL.FleetService import FleetService, FLEET_STATE_STRUCT
 from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
 
-
-# TODO: Mind almost every method in this class to use attached_services instead of service_announcer
 class FleetServiceHandler(object):
 
     # Instance Variables
@@ -46,9 +44,10 @@ class FleetServiceHandler(object):
         if not isinstance(fleet_service_instance, FleetService.FleetServiceInstance):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService.FleetServiceInstance>")
 
-        # TODO: Submit all attached_services instead
-        if fleet_service_instance.service_announcer:
-            self.submit(fleet_service.service_announcer, fleet_service_instance.service_announcer)
+        if fleet_service.has_attached_services():
+            for attached_service in fleet_service.attached_services:
+                for name, attached_service_instance in attached_service.fleet_service_instances.items():
+                    self.submit(attached_service, attached_service_instance)
 
         if fleet_service_instance.state is None:
             service_name = fleet_service_instance.name
@@ -78,9 +77,9 @@ class FleetServiceHandler(object):
         if fleet_service_instance.state is not None:
 
             # Destroy Service announcer if one should exist
-            # TODO: Destroy all attached services instead
-            if fleet_service_instance.service_announcer:
-                self.destroy(fleet_service_instance.service_announcer)
+            if fleet_service_instance.has_attached_services():
+                for attached_service_instance in fleet_service_instance.attached_services:
+                    self.destroy(attached_service_instance)
 
             # fleet_service_instance.unit_file_details_json_dict["desiredState"] = None
             fleet_service_instance.state = None
@@ -121,17 +120,19 @@ class FleetServiceHandler(object):
         if fleet_service_instance.state == FLEET_STATE_STRUCT.INACTIVE:
             response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LOADED)
 
-            # Also load service announcer after parent service was loaded
-            if fleet_service_instance.service_announcer:
-                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LOADED)
+            # Also load attached services after parent service was loaded
+            if fleet_service_instance.has_attached_services():
+                for attached_service_instance in fleet_service_instance.attached_services:
+                    response = self._change_state(attached_service_instance, FLEET_STATE_STRUCT.LOADED)
 
             return response
         elif fleet_service_instance.state is None:
             self.submit(fleet_service, fleet_service_instance)
 
-            # Also load service announcer after parent service was loaded
-            if fleet_service_instance.service_announcer:
-                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LOADED)
+            # Also load attached services after parent service was loaded
+            if fleet_service_instance.has_attached_services():
+                for attached_service_instance in fleet_service_instance.attached_services:
+                    response = self._change_state(attached_service_instance, FLEET_STATE_STRUCT.LOADED)
 
             response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LOADED)
             return response
@@ -146,8 +147,9 @@ class FleetServiceHandler(object):
             response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.INACTIVE)
 
             # Also unload service announcer after parent service was unloaded
-            if fleet_service_instance.service_announcer:
-                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.INACTIVE)
+            if fleet_service_instance.has_attached_services():
+                for attached_service_instances in fleet_service_instance.attached_services:
+                    response = self._change_state(attached_service_instances, FLEET_STATE_STRUCT.INACTIVE)
 
             return response
         else:
@@ -161,8 +163,9 @@ class FleetServiceHandler(object):
             response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LAUNCHED)
 
             # Also start service announcer after parent service was started
-            if fleet_service_instance.service_announcer:
-                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LAUNCHED)
+            if fleet_service_instance.has_attached_services():
+                for attached_service in fleet_service_instance.attached_services:
+                    response = self._change_state(attached_service, FLEET_STATE_STRUCT.LAUNCHED)
 
             return response
         elif fleet_service_instance.state is None:
@@ -170,8 +173,9 @@ class FleetServiceHandler(object):
             response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LAUNCHED)
 
             # Also start service announcer after parent service was started
-            if fleet_service_instance.service_announcer:
-                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LAUNCHED)
+            if fleet_service_instance.has_attached_services():
+                for attached_service_instance in fleet_service_instance.attached_services:
+                    response = self._change_state(attached_service_instance, FLEET_STATE_STRUCT.LAUNCHED)
 
             return response
         else:
@@ -185,16 +189,17 @@ class FleetServiceHandler(object):
             response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LOADED)
 
             # Also stop service announcer after parent service was stopped
-            if fleet_service_instance.service_announcer:
-                response = self._change_state(fleet_service_instance.service_announcer, FLEET_STATE_STRUCT.LOADED)
+            if fleet_service_instance.has_attached_services():
+                for attached_service_instance in fleet_service_instance.attached_services:
+                    response = self._change_state(attached_service_instance, FLEET_STATE_STRUCT.LOADED)
 
             return response
         else:
             return None
 
     # This function expects the parent service / the service definition
-    # TODO: Replace service_announcer. Iterate and create fleet_service_instance for every attached service
-    def create_new_fleet_service_instance(self, fleet_service, port_numbers=None, is_announcer=False):
+    # fleet_service is of type FleetService
+    def create_new_fleet_service_instance(self, fleet_service, port_numbers=None, is_attached_service=False):
 
         if fleet_service is None or not isinstance(fleet_service, FleetService):
             raise ValueError("Error: <fleet_service> argument needs to be of type <dynamite.GENERAL.FleetService>")
@@ -203,64 +208,54 @@ class FleetServiceHandler(object):
         instance_name = port_numbers if port_numbers is not None else fleet_service.get_next_port_numbers()
 
         if instance_name is None:
-            # create instance with no instance name
-            # make sure to only create one instance of this!
-            # new_fleet_instance = FleetService(
-            if len(fleet_service.fleet_service_instances) == 1:
-                return None
-            else:
-                if fleet_service.service_announcer:
-                    new_fleet_service_name = fleet_service.service_config_details.name_of_unit_file
-
-                    service_announcer_instance = self.create_new_fleet_service_instance(fleet_service.service_announcer,
-                                                                                        is_announcer=True)
-
-                    new_fleet_instance = FleetService.FleetServiceInstance(new_fleet_service_name,
-                                                                           state=None,
-                                                                           service_announcer=service_announcer_instance)
-
-                    fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
-                    return new_fleet_instance
-                else:
-                    new_fleet_service_name = fleet_service.service_config_details.name_of_unit_file
-
-                    new_fleet_instance = FleetService.FleetServiceInstance(new_fleet_service_name,
-                                                                           state=None,
-                                                                           service_announcer=None)
-
-                    if not is_announcer:
-                        fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
-
-                    return new_fleet_instance
+            return self._create_service_instance_without_template(fleet_service)
         else:
-            # Don't create a new instance if there is already a maximum amount of services
-            if len(fleet_service.fleet_service_instances) == fleet_service.service_config_details.max_instance:
-                return None
+            return self._create_service_instance_from_template(fleet_service, instance_name)
 
-            if fleet_service.service_announcer:
-                new_fleet_service_name = fleet_service.name + "@" + str(instance_name[0]) + ".service"
+    def _create_service_instance_without_template(self, fleet_service):
+        # create instance with no instance name
+        # make sure to only create one instance of this!
+        # new_fleet_instance = FleetService(
+        if len(fleet_service.fleet_service_instances) == 1:
+            return None
 
-                service_announcer_instance = self.create_new_fleet_service_instance(fleet_service.service_announcer,
-                                                                                    instance_name,
-                                                                                    is_announcer=True)
+        new_fleet_service_name = fleet_service.service_config_details.name_of_unit_file
+        attached_service_instances = []
 
-                new_fleet_instance = FleetService.FleetServiceInstance(new_fleet_service_name,
-                                                                       state=None,
-                                                                       service_announcer=service_announcer_instance)
+        if fleet_service.has_attached_services():
+            for attached_service in fleet_service.attached_services:
+                attached_service_instance = self.create_new_fleet_service_instance(attached_service,
+                                                                                   is_attached_service=True)
+                attached_service_instances.append(attached_service_instance)
 
-                fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
-                return new_fleet_instance
-            else:
-                new_fleet_service_name = fleet_service.name + "@" + str(instance_name[0]) + ".service"
+        new_fleet_instance = FleetService.FleetServiceInstance(new_fleet_service_name,
+                                                               state=None,
+                                                               attached_services=attached_service_instances)
 
-                new_fleet_instance = FleetService.FleetServiceInstance(new_fleet_service_name,
-                                                                       state=None,
-                                                                       service_announcer=None)
+        fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
+        return new_fleet_instance
 
-                if not is_announcer:
-                    fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
+    def _create_service_instance_from_template(self, fleet_service, instance_name):
+        # Don't create a new instance if there is already a maximum amount of services
+        if len(fleet_service.fleet_service_instances) == fleet_service.service_config_details.max_instance:
+            return None
 
-                return new_fleet_instance
+        new_fleet_service_name = fleet_service.name + "@" + str(instance_name[0]) + ".service"
+
+        attached_service_instances = []
+        if fleet_service.has_attached_services():
+            for attached_service in fleet_service.attached_services:
+                attached_service_instance = self.create_new_fleet_service_instance(attached_service,
+                                                                                   instance_name,
+                                                                                   is_attached_service=True)
+                attached_service_instances.append(attached_service_instance)
+
+        new_fleet_instance = FleetService.FleetServiceInstance(new_fleet_service_name,
+                                                               state=None,
+                                                               attached_services=attached_service_instances)
+
+        fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
+        return new_fleet_instance
 
     def remove_fleet_service_instance(self, fleet_service, fleet_service_instance_name=None):
 

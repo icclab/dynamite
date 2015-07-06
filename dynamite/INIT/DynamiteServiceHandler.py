@@ -158,8 +158,6 @@ class DynamiteServiceHandler(object):
         # If the file exits a new FleetService gets created
         #   If the file/service uses a 'Service_Announcer' a FleetService for the Service_Announcer gets created and
         #   attached to the 'original/parent' FleetService
-
-        # TODO: To implement 'attached_services' go through all services defined in the service_dict and after doing
         #       that attach the services as defined in the DynamiteConfig. The attached service should be saved in a
         #       list or dictionary
         for service_name, service_info_dict in service_dict.items():
@@ -173,36 +171,38 @@ class DynamiteServiceHandler(object):
                 json_dict = self.unit2dict(path_to_unit_file)
 
                 service_is_template = True if "@" in service_details.name_of_unit_file else False
-                service_announcer_fleet_service = None
+                attached_services = []
 
-                if service_details.service_announcer:
-                    service_announcer_name = service_details.service_announcer
-                    service_announcer_details = getattr(dynamite_config.Service, service_announcer_name)
-                    name_of_service_announcer_unit_file = service_announcer_details.name_of_unit_file
+                if service_details.attached_services is not None:
+                    for attached_service in service_details.attached_services:
+                        name_of_attached_service = attached_service
+                        attached_service_details = getattr(dynamite_config.Service, name_of_attached_service)
+                        name_of_attached_service_unit_file = attached_service_details.name_of_unit_file
 
-                    if name_of_service_announcer_unit_file in dict_of_files:
-                        service_announcer_is_template = True if "@" in service_details.name_of_unit_file else False
-                        path_to_service_announcer_unit_file = dict_of_files[name_of_service_announcer_unit_file]
-                        service_announcer_json_dict = self.unit2dict(path_to_service_announcer_unit_file)
+                        if name_of_attached_service_unit_file in dict_of_files:
+                            attached_service_is_template = True if "@" in service_details.name_of_unit_file else False
+                            path_to_attached_service_unit_file = dict_of_files[name_of_attached_service_unit_file]
+                            attached_service_json_dict = self.unit2dict(path_to_attached_service_unit_file)
 
-                        service_announcer_fleet_service = FleetService(service_announcer_name,
-                                                                       path_to_service_announcer_unit_file,
-                                                                       service_announcer_json_dict,
-                                                                       service_announcer_details,
-                                                                       is_template=service_announcer_is_template,
-                                                                       service_announcer=None
-                                                                       )
-                    else:
-                        raise ServiceAnnouncerFileNotFoundError("Error: <" + name_of_service_announcer_unit_file + "> File was not found.")
+                            attached_service = FleetService(name_of_attached_service,
+                                                            path_to_attached_service_unit_file,
+                                                            attached_service_json_dict,
+                                                            attached_service_details,
+                                                            is_template=attached_service_is_template,
+                                                            attached_services=None)
+                            attached_services.append(attached_service)
+                        else:
+                            raise ServiceAnnouncerFileNotFoundError("Error: <" + name_of_attached_service_unit_file + "> File was not found.")
 
                 fleet_service = FleetService(service_name,
                                              path_to_unit_file,
                                              json_dict,
                                              service_details,
                                              service_is_template,
-                                             service_announcer_fleet_service)
+                                             attached_services)
 
                 fleet_service_dict[service_info_dict["service_name"]] = fleet_service
+                # TODO: find out if attached service
             elif service_info_dict["service_details"].type == "service_announcer":
                 pass
             else:

@@ -2,7 +2,7 @@
 Dynamite:
   ServiceFiles:
     PathList: 
-      - 'C:\Sandro\ICCLab\Cloud-Native-Applications\Code-Repos\dynamite\dynamite\tests\TEST_CONFIG_FOLDER\service-files'
+      - 'C:\Projects\CNA\dynamite\dynamite\tests\TEST_CONFIG_FOLDER\service-files'
   FleetAPIEndpoint:
     ip: 127.0.0.1
     port: 49153
@@ -22,7 +22,9 @@ Dynamite:
       max_instance: 5
       base_instance_prefix_number: 12021
       ports_per_instance: 1
-      service_announcer: a_service_announcer
+      attached_service:
+        - a_service_announcer
+        - a_logger
       service_dependency:
         - example
       #   - service_y
@@ -32,6 +34,9 @@ Dynamite:
         ScalingPolicy: scale_down
     a_service_announcer:
       name_of_unit_file: a_service_announcer@.service
+      type: service_announcer
+    a_logger:
+      name_of_unit_file: a_logger@.service
       type: service_announcer
   ScalingPolicy:
     scale_up:

@@ -1,0 +1,13 @@
+[Unit]
+Description=Announcer for webserver service
+BindsTo=webserver@%i.service
+After=webserver@%i.service
+
+[Service]
+EnvironmentFile=/etc/environment
+
+Restart=always
+ExecStart=/bin/sh -c "while true; do echo 'announce webserver'; sleep 10; done"
+
+[X-Fleet]
+MachineOf=webserver@%i.service

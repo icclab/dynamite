@@ -99,20 +99,17 @@ def path_to_tmp_dynamite_config_file(request):
 
     return path_to_tmp_config
 
-
 def test_create_dynamiteConfig_object_with_arg_config_path_argument(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
 
     dynamite_config = DynamiteConfig(arg_config_path=arg_config_path)
     assert dynamite_config
 
-
 def test_create_dynamiteConfig_with_incorrect_arg_config_path_argument():
     arg_config_path = "/just/plain/wrong.yaml"
 
     with pytest.raises(FileNotFoundError):
         dynamite_config = DynamiteConfig(arg_config_path)
-
 
 def test_create_dynamiteConfig_object_with_arg_config_path_and_arg_service_folder_list_argument(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
@@ -125,8 +122,7 @@ def test_create_dynamiteConfig_object_with_arg_config_path_and_arg_service_folde
 
     assert len(path_list) == 2
     assert 'tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
-    assert os.path.abspath('tests\\TEST_CONFIG_FOLDER\\service-files') in path_list
-
+    assert absolute_path_of_service_folder in path_list
 
 def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_same_value_as_in_config(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
@@ -139,7 +135,6 @@ def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_same
 
     assert len(path_list) == 1
     assert absolute_path_of_service_folder in path_list
-
 
 def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_with_multiple_duplicate_values(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
@@ -154,7 +149,6 @@ def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_with
     assert 'tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
     assert absolute_path_of_service_folder in path_list
 
-
 def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_containing_incorrect_value(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
     arg_service_folder_list = ['path\\to\\nowhere']
@@ -162,14 +156,12 @@ def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_cont
     with pytest.raises(NotADirectoryError):
         dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder_list)
 
-
 def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_containing_incorrect_string_value(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
     arg_service_folder_list = 'path\\to\\nowhere'
 
     with pytest.raises(NotADirectoryError):
         dynamite_config = DynamiteConfig(arg_config_path, arg_service_folder_list)
-
 
 def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_containing_correct_string_value(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
@@ -182,7 +174,6 @@ def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_cont
     assert len(path_list) == 2
     assert 'tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
     assert absolute_path_of_service_folder in path_list
-
 
 def test_correct_values_in_dynamiteConfig_object_after_creation(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file
@@ -218,7 +209,6 @@ def test_correct_values_in_dynamiteConfig_object_after_creation(path_to_tmp_dyna
     assert scaling_policy.scale_up.threshold == 250
     assert scaling_policy.scale_down.service_type == 'apache'
     assert scaling_policy.scale_down.cooldown_period_unit == 'minute'
-
 
 # if __name__ == '__main__':
 #     pass

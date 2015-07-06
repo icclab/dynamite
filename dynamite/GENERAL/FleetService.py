@@ -10,7 +10,6 @@ class FLEET_STATE_STRUCT(object):
     LAUNCHED = "launched"
     ALLOWED_STATES = [None, "inactive", "loaded", "launched"]
 
-# TODO: add attached_services attribute (remove service_announcer since that is also an attache service) adapt class methods accordingly
 class FleetService(object):
     name = None
     path_on_filesystem = None
@@ -18,7 +17,8 @@ class FleetService(object):
     service_config_details = None           # of type DynamiteConfig.ServiceStruct.ServiceDetailStruct
     is_template = None
     used_port_numbers = None
-    service_announcer = None
+
+    attached_services = None
 
     fleet_service_instances = None
 
@@ -28,7 +28,7 @@ class FleetService(object):
                  unit_file_details_json_dict=None,
                  service_details_dynamite_config=None,
                  is_template=None,
-                 service_announcer=None,
+                 attached_services=None,
                  used_port_numbers=None):
 
         # add a check for the variables (if None, path exists, etc)
@@ -62,10 +62,17 @@ class FleetService(object):
             else:
                 self.used_port_numbers = [0] * self.service_config_details.max_instance * self.service_config_details.ports_per_instance
 
-        if service_announcer is not None:
-            self.service_announcer = service_announcer
+        if attached_services is not None:
+            self.attached_services = attached_services
+        else:
+            self.attached_services = []
 
         self.fleet_service_instances = {}
+
+    def has_attached_services(self):
+            is_not_none = self.attached_services is not None
+            has_at_least_one_attached_service = len(self.attached_services) > 0
+            return is_not_none and has_at_least_one_attached_service
 
     def to_dict(self):
         fleet_service_json = {}
@@ -74,10 +81,13 @@ class FleetService(object):
             if key == "service_config_details" and value is not None:
                 service_config_details_json = value.to_dict()
                 fleet_service_json[key] = service_config_details_json
-            elif key == "service_announcer":
+            elif key == "attached_services":
                 if value is not None:
-                    fleet_service_announcer_json = value.to_dict()
-                    fleet_service_json[key] = fleet_service_announcer_json
+                    attached_services_json = []
+                    for attached_service in value:
+                        fleet_service_announcer_json = attached_service.to_dict()
+                        attached_services_json.append(fleet_service_announcer_json)
+                    fleet_service_json[key] = attached_services_json
                 else:
                     fleet_service_json[key] = None
             elif key == "fleet_service_instances":
@@ -100,10 +110,11 @@ class FleetService(object):
     @staticmethod
     def dict_to_instance(fleet_service_dict):
 
-        fleet_service_announcer = None
-
-        if 'service_announcer'in fleet_service_dict:
-            fleet_service_announcer = FleetService.dict_to_instance(fleet_service_dict['service_announcer'])
+        attached_services = []
+        if 'attached_services'in fleet_service_dict:
+            attached_services_dict = fleet_service_dict['attached_services']
+            for attached_service_name in attached_services_dict:
+                attached_services.append(FleetService.dict_to_instance(attached_service_name))
 
         service_config_details = DynamiteConfig.ServiceStruct.ServiceDetailStruct.dict_to_instance(
             fleet_service_dict['service_config_details'])
@@ -118,7 +129,7 @@ class FleetService(object):
                                               unit_file_details_json_dict=fleet_service_dict['unit_file_details_json_dict'],
                                               service_details_dynamite_config=service_config_details,
                                               is_template=fleet_service_dict['is_template'],
-                                              service_announcer=fleet_service_announcer,
+                                              attached_services=attached_services,
                                               used_port_numbers=used_port_numbers)
 
         return fleet_service_instance
@@ -156,52 +167,25 @@ class FleetService(object):
 
     def __repr__(self):
         return "FleetService(name={},path_on_filesystem={},service_config_details={},is_template={}," \
-               "used_port_numbers={},service_announcer={},service_instances={})".format(
+               "used_port_numbers={},attached_services={},service_instances={})".format(
                     self.name,
                     self.path_on_filesystem,
                     repr(self.service_config_details),
                     repr(self.is_template),
                     repr(self.used_port_numbers),
-                    repr(self.service_announcer),
+                    repr(self.attached_services),
                     repr(self.fleet_service_instances)
                )
 
-    # TODO: add attached_services attribute (remove service_announcer since that is also an attache service) adapt class methods accordingly
     class FleetServiceInstance(object):
+        # instance name like service_name@port.service
         name = None
         state = None
-        service_announcer = None
 
-        def to_dict(self):
-            fleet_service_json = {}
+        attached_services = None
 
-            for key, value in self.__dict__.items():
-                if key == "service_announcer":
-                    if value is not None:
-                        fleet_service_announcer_json = value.to_dict()
-                        fleet_service_json[key] = fleet_service_announcer_json
-                    else:
-                        fleet_service_json[key] = None
-                else:
-                    fleet_service_json[key] = value
-
-            return fleet_service_json
-
-        @staticmethod
-        def dict_to_instance(fleet_service_instance_dict):
-
-            fleet_service_instance_announcer = None
-
-            if 'service_announcer'in fleet_service_instance_dict:
-                fleet_service_instance_announcer = FleetService.FleetServiceInstance.dict_to_instance(fleet_service_instance_dict['service_announcer'])
-
-            fleet_service_instance = FleetService.FleetServiceInstance(name=fleet_service_instance_dict['name'],
-                                                                       state=fleet_service_instance_dict['state'],
-                                                                       service_announcer=fleet_service_instance_announcer)
-
-            return fleet_service_instance
-
-        def __init__(self, name, state, service_announcer=None):
+        # expected type of attached_services FleetService.FleetServiceInstance[]
+        def __init__(self, name, state, attached_services=None):
             self.name = name
 
             if state in FLEET_STATE_STRUCT.ALLOWED_STATES:
@@ -209,9 +193,47 @@ class FleetService(object):
             else:
                 raise ValueError("Error state needs to one of these: " + str(FLEET_STATE_STRUCT.ALLOWED_STATES))
 
-            if service_announcer is not None and \
-                    isinstance(service_announcer, FleetService.FleetServiceInstance):
-                self.service_announcer = service_announcer
+            self.attached_services = []
+            if attached_services is not None:
+                self.attached_services = attached_services
+
+        def has_attached_services(self):
+            is_not_none = self.attached_services is not None
+            has_at_least_one_attached_service = len(self.attached_services) > 0
+            return is_not_none and has_at_least_one_attached_service
+
+        def to_dict(self):
+            fleet_service_json = {}
+
+            for key, value in self.__dict__.items():
+                if key == "attached_services":
+                    if value is not None:
+                        attached_services = []
+                        for attached_service in value:
+                            attached_service_json = attached_service.to_dict()
+                            attached_services.append(attached_service_json)
+                        fleet_service_json[key] = attached_services
+                    else:
+                        fleet_service_json[key] = []
+                else:
+                    fleet_service_json[key] = value
+
+            return fleet_service_json
+
+        @staticmethod
+        def dict_to_instance(fleet_service_instance_dict):
+            attached_services = []
+            if 'attached_service' in fleet_service_instance_dict:
+                attached_services_dict = fleet_service_instance_dict['attached_service']
+                for attached_service_dict in attached_services_dict:
+                    attached_service = FleetService.FleetServiceInstance.dict_to_instance(attached_service_dict)
+                    attached_services.append(attached_service)
+
+            fleet_service_instance = FleetService.FleetServiceInstance(name=fleet_service_instance_dict['name'],
+                                                                       state=fleet_service_instance_dict['state'],
+                                                                       attached_services=attached_services)
+
+            return fleet_service_instance
 
         def __str__(self):
             return_string = "FleetServiceInstance Instance:\n" \
@@ -223,11 +245,9 @@ class FleetService(object):
             return return_string
 
         def __repr__(self):
-            return "FleetServiceInstance(name={},state={},service_announcer={})".format(
+            return "FleetServiceInstance(name={},state={},attached_services={})".format(
                 self.name,
                 repr(self.state),
-                repr(self.service_announcer)
+                repr(self.attached_services)
             )
 
-if __name__ == '__main__':
-    pass

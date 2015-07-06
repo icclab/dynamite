@@ -1,0 +1,16 @@
+# a_service_announcer.service
+
+[Unit]
+Description=Logging for 'a' service
+BindsTo=a@%i.service
+After=a@%i.service
+
+[Service]
+EnvironmentFile=/etc/environment
+
+Restart=always
+
+ExecStart=/bin/sh -c "while true; do echo 'hello'; sleep 10; done"
+
+[X-Fleet]
+MachineOf=a@%i.service
