@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from setuptools import setup, Command, find_packages
 from pip.req import parse_requirements
 import pip
