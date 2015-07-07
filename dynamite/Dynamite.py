@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 __author__ = 'brnr'
 
 import os
@@ -178,6 +180,9 @@ class Dynamite:
         scaling_engine = ScalingEngine(scaling_engine_config)
         scaling_engine.start()
 
-if __name__ == '__main__':
+def main():
     dynamite = Dynamite()
     dynamite.run()
+
+if __name__ == '__main__':
+    main()
