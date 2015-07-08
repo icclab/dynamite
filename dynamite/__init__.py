@@ -2,7 +2,9 @@ __author__ = 'brnr'
 
 import logging
 import logging.config
+import os
 import os.path
 
-if os.path.isfile('logging.conf'):
-    logging.config.fileConfig('logging.conf')
+log_config_path = os.environ.get("DYNAMITE_LOG_CONFIG_PATH", "logging.conf")
+if os.path.isfile(log_config_path):
+    logging.config.fileConfig(log_config_path)
