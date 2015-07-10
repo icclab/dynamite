@@ -25,6 +25,8 @@ from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
 from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
 from dynamite.ENGINE.RabbitMQExecutedTaskReceiver import RabbitMQExecutedTaskReceiver
 from dynamite.ENGINE.RabbitMQScalingActionSender import RabbitMQScalingActionSender
+from dynamite.EXECUTOR.RabbitMQScalingRequestReceiver import RabbitMQScalingRequestReceiver
+from dynamite.EXECUTOR.RabbitMQScalingResponseSender import RabbitMQScalingResponseSender
 
 class Dynamite:
 
@@ -176,10 +178,19 @@ class Dynamite:
         return DynamiteINIT(self.ARG_CONFIG_PATH, self.ARG_SERVICE_FOLDER, self.ARG_ETCD_ENDPOINT)
 
     def start_executor(self):
-        dynamite_executor = DynamiteEXECUTOR(rabbit_mq_endpoint=self.ARG_RABBITMQ_ENDPOINT,
-                                             etcd_endpoint=self.ARG_ETCD_ENDPOINT,
-                                             name_scaling_request_queue=self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME,
-                                             name_scaling_response_queue=self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME)
+        scaling_response_sender = RabbitMQScalingResponseSender(
+            ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT),
+            self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME
+        )
+        scaling_request_receiver = RabbitMQScalingRequestReceiver(
+            ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT),
+            self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME
+        )
+        dynamite_executor = DynamiteEXECUTOR(
+            scaling_request_receiver,
+            scaling_response_sender,
+            etcd_endpoint=self.ARG_ETCD_ENDPOINT
+        )
 
         dynamite_executor.start()
 
