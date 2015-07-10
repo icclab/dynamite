@@ -8,10 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.par
 
 import argparse
 import platform
-import pika
 import logging
-
-from multiprocessing import Queue
 
 from dynamite.INIT.DynamiteINIT import DynamiteINIT
 from dynamite.GENERAL.MetricsReceiver import MetricsReceiver
@@ -21,31 +18,22 @@ from dynamite.ENGINE.ScalingEngine import ScalingEngine
 from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguration
 from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
 from dynamite.METRICS.DynamiteMETRICS import DynamiteMETRICS
-from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
-from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
-from dynamite.ENGINE.RabbitMQExecutedTaskReceiver import RabbitMQExecutedTaskReceiver
-from dynamite.ENGINE.RabbitMQScalingActionSender import RabbitMQScalingActionSender
-from dynamite.EXECUTOR.RabbitMQScalingRequestReceiver import RabbitMQScalingRequestReceiver
-from dynamite.EXECUTOR.RabbitMQScalingResponseSender import RabbitMQScalingResponseSender
+from dynamite.GENERAL.ScalingMessageSenderReceiverFactory import *
 
 class Dynamite:
 
     DYNAMITE_ENVIRONMENT = os.getenv('DYNAMITE_ENVIRONMENT', DYNAMITE_ENVIRONMENT_STRUCT.DEVELOPMENT)
 
-    USE_RABBITMQ = True
-
     DEFAULT_CONFIG_PATH = None
     DEFAULT_SERVICE_FOLDER = None
     DEFAULT_ETCD_ENDPOINT = "127.0.0.1:4001"
-    DEFAULT_RABBITMQ_ENDPOINT = "127.0.0.1:5672"
 
     ARG_CONFIG_PATH = None
     ARG_SERVICE_FOLDER = None
     ARG_ETCD_ENDPOINT = None
     ARG_RABBITMQ_ENDPOINT = None
 
-    RABBITMQ_SCALING_REQUEST_QUEUE_NAME = "dynamite_scaling_request"
-    RABBITMQ_SCALING_RESPONSE_QUEUE_NAME = "dynamite_scaling_response"
+    _message_sender_receiver_factory = None
 
     _scaling_engine_metrics_communication_queue = None
     _scaling_action_communication_queue = None
@@ -56,7 +44,6 @@ class Dynamite:
         self._scaling_engine_metrics_communication_queue = None
         self._scaling_action_communication_queue = None
         self._scaling_action_response_communication_queue = None
-        pass
 
     def run(self):
         self._logger.info("Started dynamite")
@@ -115,9 +102,9 @@ class Dynamite:
                             default=self.DEFAULT_ETCD_ENDPOINT)
 
         parser.add_argument("--rabbitmq_endpoint", "-r",
-                            help="Define Rabbit-MQ Endpoint [IP]:[PORT]. Default: " + self.DEFAULT_RABBITMQ_ENDPOINT,
+                            help="Define Rabbit-MQ Endpoint [IP]:[PORT].",
                             nargs='?',
-                            default=self.DEFAULT_RABBITMQ_ENDPOINT)
+                            default=None)
 
         args = parser.parse_args()
 
@@ -127,7 +114,8 @@ class Dynamite:
 
         self._logger.info("Using ectd endpoint %s", self.ARG_ETCD_ENDPOINT)
         self._logger.info("Using config path %s", self.ARG_CONFIG_PATH)
-        self._logger.info("Using rabbitmq endpoint %s", self.ARG_RABBITMQ_ENDPOINT)
+        if self.ARG_RABBITMQ_ENDPOINT:
+            self._logger.info("Using rabbitmq endpoint %s", self.ARG_RABBITMQ_ENDPOINT)
 
         # Test if Config-File exists. If not, terminate application
         if not os.path.exists(self.ARG_CONFIG_PATH):
@@ -149,43 +137,23 @@ class Dynamite:
         self._logger.info("Using service folders %s", str(self.ARG_SERVICE_FOLDER))
 
     def create_communication_queues(self):
+        communication_type = CommunicationType.InterProcessQueue
+        service_endpoint = None
+        if self.ARG_RABBITMQ_ENDPOINT is not None:
+            communication_type = CommunicationType.RabbitMQ
+            service_endpoint = ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT)
+
+        self._message_sender_receiver_factory = ScalingMessageSenderReceiverFactory(communication_type)
+        self._message_sender_receiver_factory.initialize_connection(service_endpoint=service_endpoint)
         self._scaling_engine_metrics_communication_queue = Queue()
-
-        if self.USE_RABBITMQ:
-            self.create_rabbit_mq_queues(self.ARG_RABBITMQ_ENDPOINT)
-        else:
-            self._scaling_action_communication_queue = Queue()
-            self._scaling_action_response_communication_queue = Queue()
-
-    def create_rabbit_mq_queues(self, rabbit_mq_endpoint_string):
-
-        self._logger.debug("Connection to rabbitmq %s", rabbit_mq_endpoint_string)
-        rabbit_mq_endpoint = ServiceEndpoint.from_string(rabbit_mq_endpoint_string)
-        rabbit_mq_connection_parameters = pika.ConnectionParameters(host=rabbit_mq_endpoint.host_ip,
-                                                                    port=rabbit_mq_endpoint.port)
-
-        connection = pika.BlockingConnection(rabbit_mq_connection_parameters)
-        channel = connection.channel()
-
-        self._logger.debug("Creating scaling request queue %s", self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME)
-        channel.queue_declare(queue=self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME, durable=True)
-        self._logger.debug("Creating scaling response queue %s", self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME)
-        channel.queue_declare(queue=self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME, durable=True)
-
-        connection.close()
 
     def parse_config(self):
         return DynamiteINIT(self.ARG_CONFIG_PATH, self.ARG_SERVICE_FOLDER, self.ARG_ETCD_ENDPOINT)
 
     def start_executor(self):
-        scaling_response_sender = RabbitMQScalingResponseSender(
-            ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT),
-            self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME
-        )
-        scaling_request_receiver = RabbitMQScalingRequestReceiver(
-            ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT),
-            self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME
-        )
+        scaling_response_sender = self._message_sender_receiver_factory.create_response_sender()
+        scaling_request_receiver = self._message_sender_receiver_factory.create_request_receiver()
+
         dynamite_executor = DynamiteEXECUTOR(
             scaling_request_receiver,
             scaling_response_sender,
@@ -206,18 +174,8 @@ class Dynamite:
         scaling_engine_config.scaling_policies = config.dynamite_config.ScalingPolicy.get_scaling_policies()
         scaling_engine_config.etcd_connection = config.etcdctl
 
-        if self.USE_RABBITMQ:
-            scaling_engine_config.executed_task_receiver = RabbitMQExecutedTaskReceiver(
-                ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT),
-                self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME
-            )
-            scaling_engine_config.scaling_action_sender = RabbitMQScalingActionSender(
-                ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT),
-                self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME
-            )
-        else:
-            scaling_engine_config.executed_task_receiver = ExecutedTaskReceiver(self._scaling_action_response_communication_queue)
-            scaling_engine_config.scaling_action_sender = ScalingActionSender(self._scaling_action_communication_queue)
+        scaling_engine_config.executed_task_receiver = self._message_sender_receiver_factory.create_response_receiver()
+        scaling_engine_config.scaling_action_sender = self._message_sender_receiver_factory.create_request_sender()
 
         scaling_engine = ScalingEngine(scaling_engine_config)
         scaling_engine.start()
