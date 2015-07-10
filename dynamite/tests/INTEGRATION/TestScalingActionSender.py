@@ -3,7 +3,7 @@ __author__ = 'bloe'
 import time
 from dynamite import Dynamite
 from dynamite.GENERAL.ServiceEndpoint import ServiceEndpoint
-from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
+from dynamite.ENGINE.RabbitMQScalingActionSender import RabbitMQScalingActionSender
 from dynamite.EXECUTOR.DynamiteScalingRequest import DynamiteScalingRequest
 from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
 
@@ -27,7 +27,7 @@ class TestScalingActionSender(Dynamite.Dynamite):
         self.delete_queue()
         self.create_rabbit_mq_queues(self.ARG_RABBITMQ_ENDPOINT)
 
-        self._scaling_action_sender = ScalingActionSender(
+        self._scaling_action_sender = RabbitMQScalingActionSender(
             rabbit_mq_endpoint,
             self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME
         )

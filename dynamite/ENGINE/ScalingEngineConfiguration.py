@@ -8,9 +8,8 @@ class ScalingEngineConfiguration(object):
     metrics_receiver = None
     scaling_policies = []
     etcd_connection = None
-    rabbit_mq_endpoint = None
-    scaling_request_queue_name = None
-    scaling_response_queue_name = None
+    executed_task_receiver = None
+    scaling_action_sender = None
 
     def __repr__(self):
         return "ScalingEngineConfiguration(" \
@@ -18,17 +17,15 @@ class ScalingEngineConfiguration(object):
                "metrics_receiver={}," \
                "scaling_policies={}," \
                "etcd_connection={}," \
-               "rabbit_mq_endpoint={}," \
-               "scaling_request_queue_name={}," \
-               "scaling_response_queue_name={}" \
+               "executed_task_receiver={}," \
+               "scaling_action_sender={}" \
                .format(
                     self.services_dictionary,
                     self.metrics_receiver,
                     self.scaling_policies,
                     self.etcd_connection,
-                    self.rabbit_mq_endpoint,
-                    self.scaling_request_queue_name,
-                    self.scaling_response_queue_name
+                    self.executed_task_receiver,
+                    self.scaling_action_sender
                )
 
 

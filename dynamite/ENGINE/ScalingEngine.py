@@ -5,8 +5,6 @@ import logging
 
 from dynamite.ENGINE.ScalingMetrics import ScalingMetrics
 from dynamite.ENGINE.RuleChecker import RuleChecker
-from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
-from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
 from dynamite.ENGINE.RunningServicesRegistry import RunningServicesRegistry
 from dynamite.ENGINE.ServiceInstanceNameResolver import CachingServiceInstanceNameResolver, ServiceInstanceNameResolver
 from dynamite.EXECUTOR.DynamiteScalingRequest import DynamiteScalingRequest
@@ -24,14 +22,8 @@ class ScalingEngine(object):
         self._metrics_receiver = configuration.metrics_receiver
         self._metrics = ScalingMetrics()
         self._rule_checker = RuleChecker(configuration.scaling_policies, configuration.services_dictionary)
-        self._executed_tasks_receiver = ExecutedTaskReceiver(
-            configuration.rabbit_mq_endpoint,
-            configuration.scaling_response_queue_name
-        )
-        self._scaling_action_sender = ScalingActionSender(
-            configuration.rabbit_mq_endpoint,
-            configuration.scaling_request_queue_name
-        )
+        self._executed_tasks_receiver = configuration.executed_task_receiver
+        self._scaling_action_sender = configuration.scaling_action_sender
         atexit.register(self._on_engine_shutdown)
         self._running_services_registry = RunningServicesRegistry(configuration.services_dictionary)
         instance_name_resolver = ServiceInstanceNameResolver(configuration.etcd_connection)

@@ -1,6 +1,6 @@
 __author__ = 'bloe'
 
-from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
+from dynamite.ENGINE.RabbitMQExecutedTaskReceiver import RabbitMQExecutedTaskReceiver
 from dynamite import Dynamite
 from dynamite.GENERAL.ServiceEndpoint import ServiceEndpoint
 from dynamite.EXECUTOR.DynamiteScalingResponse import DynamiteScalingResponse
@@ -29,7 +29,7 @@ class TestExecutedTaskReceiver(Dynamite.Dynamite):
         self.delete_queue()
         self.create_rabbit_mq_queues(self.ARG_RABBITMQ_ENDPOINT)
 
-        self._task_receiver = ExecutedTaskReceiver(
+        self._task_receiver = RabbitMQExecutedTaskReceiver(
             rabbit_mq_endpoint,
             self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME
         )

@@ -21,10 +21,16 @@ from dynamite.ENGINE.ScalingEngine import ScalingEngine
 from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguration
 from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
 from dynamite.METRICS.DynamiteMETRICS import DynamiteMETRICS
+from dynamite.ENGINE.ExecutedTasksReceiver import ExecutedTaskReceiver
+from dynamite.ENGINE.ScalingActionSender import ScalingActionSender
+from dynamite.ENGINE.RabbitMQExecutedTaskReceiver import RabbitMQExecutedTaskReceiver
+from dynamite.ENGINE.RabbitMQScalingActionSender import RabbitMQScalingActionSender
 
 class Dynamite:
 
     DYNAMITE_ENVIRONMENT = os.getenv('DYNAMITE_ENVIRONMENT', DYNAMITE_ENVIRONMENT_STRUCT.DEVELOPMENT)
+
+    USE_RABBITMQ = True
 
     DEFAULT_CONFIG_PATH = None
     DEFAULT_SERVICE_FOLDER = None
@@ -39,8 +45,15 @@ class Dynamite:
     RABBITMQ_SCALING_REQUEST_QUEUE_NAME = "dynamite_scaling_request"
     RABBITMQ_SCALING_RESPONSE_QUEUE_NAME = "dynamite_scaling_response"
 
+    _scaling_engine_metrics_communication_queue = None
+    _scaling_action_communication_queue = None
+    _scaling_action_response_communication_queue = None
+
     def __init__(self):
         self._logger = logging.getLogger("dynamite.Dynamite")
+        self._scaling_engine_metrics_communication_queue = None
+        self._scaling_action_communication_queue = None
+        self._scaling_action_response_communication_queue = None
         pass
 
     def run(self):
@@ -48,11 +61,10 @@ class Dynamite:
         self.init_env()
         self.init_arguments()
         config = self.parse_config()
-        self.create_rabbit_mq_queues(self.ARG_RABBITMQ_ENDPOINT)
-        scaling_engine_metrics_communication_queue = Queue()
+        self.create_communication_queues()
         self.start_executor()
-        self.start_metrics_component(scaling_engine_metrics_communication_queue)
-        self.start_scaling_engine(scaling_engine_metrics_communication_queue, config)
+        self.start_metrics_component()
+        self.start_scaling_engine(config)
 
     def init_env(self):
         if platform.system() == 'Windows':
@@ -134,6 +146,15 @@ class Dynamite:
 
         self._logger.info("Using service folders %s", str(self.ARG_SERVICE_FOLDER))
 
+    def create_communication_queues(self):
+        self._scaling_engine_metrics_communication_queue = Queue()
+
+        if self.USE_RABBITMQ:
+            self.create_rabbit_mq_queues(self.ARG_RABBITMQ_ENDPOINT)
+        else:
+            self._scaling_action_communication_queue = Queue()
+            self._scaling_action_response_communication_queue = Queue()
+
     def create_rabbit_mq_queues(self, rabbit_mq_endpoint_string):
 
         self._logger.debug("Connection to rabbitmq %s", rabbit_mq_endpoint_string)
@@ -162,20 +183,30 @@ class Dynamite:
 
         dynamite_executor.start()
 
-    def start_metrics_component(self, scaling_engine_metrics_communication_queue):
+    def start_metrics_component(self):
         dynamite_metrics = DynamiteMETRICS(self.ARG_ETCD_ENDPOINT,
-                                           scaling_engine_metrics_communication_queue)
+                                           self._scaling_engine_metrics_communication_queue)
         dynamite_metrics.start()
 
-    def start_scaling_engine(self, scaling_engine_metrics_communication_queue, config):
+    def start_scaling_engine(self, config):
         scaling_engine_config = ScalingEngineConfiguration()
-        scaling_engine_config.metrics_receiver = MetricsReceiver(scaling_engine_metrics_communication_queue)
+        scaling_engine_config.metrics_receiver = MetricsReceiver(self._scaling_engine_metrics_communication_queue)
         scaling_engine_config.services_dictionary = config.dynamite_service_handler.FleetServiceDict
         scaling_engine_config.scaling_policies = config.dynamite_config.ScalingPolicy.get_scaling_policies()
         scaling_engine_config.etcd_connection = config.etcdctl
-        scaling_engine_config.rabbit_mq_endpoint = ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT)
-        scaling_engine_config.scaling_request_queue_name = self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME
-        scaling_engine_config.scaling_response_queue_name = self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME
+
+        if self.USE_RABBITMQ:
+            scaling_engine_config.executed_task_receiver = RabbitMQExecutedTaskReceiver(
+                ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT),
+                self.RABBITMQ_SCALING_RESPONSE_QUEUE_NAME
+            )
+            scaling_engine_config.scaling_action_sender = RabbitMQScalingActionSender(
+                ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT),
+                self.RABBITMQ_SCALING_REQUEST_QUEUE_NAME
+            )
+        else:
+            scaling_engine_config.executed_task_receiver = ExecutedTaskReceiver(self._scaling_action_response_communication_queue)
+            scaling_engine_config.scaling_action_sender = ScalingActionSender(self._scaling_action_communication_queue)
 
         scaling_engine = ScalingEngine(scaling_engine_config)
         scaling_engine.start()
