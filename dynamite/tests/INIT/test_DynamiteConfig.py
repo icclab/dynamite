@@ -8,6 +8,9 @@ from dynamite.INIT.DynamiteConfig import DynamiteConfig
 
 absolute_path_of_service_folder = os.path.abspath('tests\\TEST_CONFIG_FOLDER\\service-files')
 
+FLEET_IP="172.17.8.101"
+FLEET_PORT=49153
+
 @pytest.fixture(scope="module")
 def path_to_tmp_dynamite_config_file(request):
 
@@ -23,8 +26,8 @@ def path_to_tmp_dynamite_config_file(request):
                     'PathList': [absolute_path_of_service_folder]
                 },
                 'FleetAPIEndpoint': {
-                    'ip': '172.17.8.101',
-                    'port': 49153
+                    'ip': FLEET_IP,
+                    'port': FLEET_PORT
                 },
                 'ETCD': {
                     'ip_api_endpoint': '127.0.0.1',
@@ -174,6 +177,24 @@ def test_create_dynamiteConfig_object_with_arg_service_folder_list_argument_cont
     assert len(path_list) == 2
     assert 'tests\\TEST_CONFIG_FOLDER\\service-files' in path_list
     assert absolute_path_of_service_folder in path_list
+
+def test_create_dynamiteConfig_object_with_fleet_endpoint_argument(path_to_tmp_dynamite_config_file):
+    arg_config_path = path_to_tmp_dynamite_config_file
+
+    expected_ip = "127.0.0.1"
+    expected_port = 9876
+    dynamite_config = DynamiteConfig(arg_config_path=arg_config_path, fleet_endpoint=expected_ip + ":" + str(expected_port))
+    assert dynamite_config.FleetAPIEndpoint.ip == expected_ip
+    assert dynamite_config.FleetAPIEndpoint.port == expected_port
+
+def test_create_dynamiteConfig_object_without_fleet_endpoint_argument(path_to_tmp_dynamite_config_file):
+    arg_config_path = path_to_tmp_dynamite_config_file
+
+    expected_ip = FLEET_IP
+    expected_port = FLEET_PORT
+    dynamite_config = DynamiteConfig(arg_config_path=arg_config_path)
+    assert dynamite_config.FleetAPIEndpoint.ip == expected_ip
+    assert dynamite_config.FleetAPIEndpoint.port == expected_port
 
 def test_correct_values_in_dynamiteConfig_object_after_creation(path_to_tmp_dynamite_config_file):
     arg_config_path = path_to_tmp_dynamite_config_file

@@ -8,6 +8,7 @@ from intervaltree import Interval, IntervalTree
 from dynamite.GENERAL.DynamiteExceptions import OverlappingPortRangeError
 from dynamite.GENERAL.DynamiteExceptions import ServiceDependencyNotExistError
 from dynamite.GENERAL import ETCDCTL
+from dynamite.GENERAL import ServiceEndpoint
 
 class DynamiteConfig(object):
     # Instance Variables
@@ -20,6 +21,129 @@ class DynamiteConfig(object):
     IntervalTree = None         # Should not matter after initialization!
 
     dynamite_yaml_config = None
+
+    # Arguments:    arg_config_path: Path to the Dynamite YAML config file
+    #               arg_service_folder (Optional):  List of paths containing service-files.
+    #                                               Can also/additionally be defined in the dynamite yaml configuration file
+    def __init__(self, arg_config_path=None, arg_service_folder_list=None, etcd_endpoint=None, fleet_endpoint=None):
+
+        if arg_config_path is not None:
+            self.init_from_file(arg_config_path, arg_service_folder_list, fleet_endpoint)
+
+        if etcd_endpoint is not None:
+            self.init_from_etcd(etcd_endpoint)
+
+    def init_from_file(self, arg_config_path=None, arg_service_folder_list=None, fleet_endpoint=None):
+        # Test if Config-File exists. If not, terminate application
+        if not os.path.exists(arg_config_path):
+            raise FileNotFoundError("--config-file: " + arg_config_path + " --> File at given config-path does not exist")
+        else:
+            dynamite_yaml_config = self.load_config_file(arg_config_path)
+
+        self.set_instance_variables(dynamite_yaml_config, arg_service_folder_list, fleet_endpoint)
+
+    def init_from_etcd(self, etcd_endpoint):
+
+        etcdctl = ETCDCTL.create_etcdctl(etcd_endpoint)
+
+        if etcdctl is not None:
+            res = etcdctl.read(ETCDCTL.etcd_key_init_application_configuration)
+            dynamite_config_str = res.value
+
+            if dynamite_config_str is not None and isinstance(dynamite_config_str, str):
+                dynamite_yaml_config = json.loads(dynamite_config_str)
+                self.set_instance_variables(dynamite_yaml_config)
+
+        else:
+            return None
+
+    # Converts YAML Config to Python Dictionary
+    def load_config_file(self, path_to_config_file):
+
+        with open(path_to_config_file, "r") as config_yaml:
+            dynamite_yaml_config = yaml.load(config_yaml)
+
+        return dynamite_yaml_config
+
+    def set_instance_variables(self, dynamite_yaml_config, arg_service_folder_list=None, fleet_endpoint=None):
+
+        self.dynamite_yaml_config = dynamite_yaml_config
+
+        if isinstance(arg_service_folder_list, str):
+            tmp_str = arg_service_folder_list
+            arg_service_folder_list = []
+            arg_service_folder_list.append(tmp_str)
+
+        PathList = self.dynamite_yaml_config['Dynamite']['ServiceFiles']['PathList']
+        self.ServiceFiles = DynamiteConfig.ServiceFilesStruct(PathList)
+
+        # Combine the 2 lists containing paths to the service files
+        if arg_service_folder_list:
+            if self.ServiceFiles.PathList != arg_service_folder_list:
+                if self.ServiceFiles.PathList is not None:
+                    path_set_a = set(self.ServiceFiles.PathList)
+                    path_set_b = set(arg_service_folder_list)
+
+                    self.ServiceFiles.PathList = list(path_set_a)+list(path_set_b-path_set_a)
+                else:
+                    self.ServiceFiles.PathList = arg_service_folder_list
+
+        # check if Folders in ServiceFiles-->PathList exit
+        if self.ServiceFiles.PathList is not None:
+            for folder in self.ServiceFiles.PathList:
+                if not os.path.isdir(folder):
+                    raise NotADirectoryError("Error: " + folder + " is not a valid directory")
+
+        if fleet_endpoint is None:
+            ip = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['ip']
+            port = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['port']
+            self.FleetAPIEndpoint = DynamiteConfig.FleetAPIEndpointStruct(ip, port)
+        else:
+            endpoint = ServiceEndpoint.ServiceEndpoint.from_string(fleet_endpoint)
+            self.FleetAPIEndpoint = DynamiteConfig.FleetAPIEndpointStruct(endpoint.host_ip, endpoint.port)
+
+        etcd_application_base_path = self.dynamite_yaml_config['Dynamite']['ETCD']['application_base_path']
+        etcd_metrics_base_path = self.dynamite_yaml_config['Dynamite']['ETCD']['metrics_base_path']
+        self.ETCD = DynamiteConfig.ETCDStruct(etcd_application_base_path, etcd_metrics_base_path)
+
+        ServicesDict = self.dynamite_yaml_config['Dynamite']['Service']
+        self.Service = DynamiteConfig.ServiceStruct(ServicesDict)
+
+        ScalingPolicyDict = self.dynamite_yaml_config['Dynamite']['ScalingPolicy']
+        self.ScalingPolicy = DynamiteConfig.ScalingPolicyStruct(ScalingPolicyDict)
+
+    def check_for_overlapping_port_ranges(self):
+        self.IntervalTree = IntervalTree()
+
+        for service_name, service_detail in self.Service.__dict__.items():
+            if service_detail.base_instance_prefix_number is not None:
+                interval_start = service_detail.base_instance_prefix_number
+                interval_end = interval_start + service_detail.max_instance
+                new_interval = Interval(interval_start, interval_end)
+
+                # True if <new_interval> is already contained in interval
+                if sorted(self.IntervalTree[new_interval]):
+                    raise OverlappingPortRangeError("Error: " + new_interval + " overlaps with already existing interval(s)"
+                                                    + sorted(self.IntervalTree[new_interval]))
+                else:
+                    self.IntervalTree.add(new_interval)
+
+    # check for existence of service_dependencies
+    def check_for_service_dependencies(self):
+        list_of_services = []
+
+        for service_name in self.Service.__dict__.keys():
+            list_of_services.append(service_name)
+
+        for service_detail in self.Service.__dict__.values():
+            if service_detail.service_dependency is not None:
+                for service_dependency in service_detail.service_dependency:
+                    if service_dependency not in list_of_services:
+                        raise ServiceDependencyNotExistError("Error: Service <" + service_dependency +
+                                                             "> defined as service dependency of service <" +
+                                                             service_detail.name +
+                                                             "> was not found in list of defined services --> " +
+                                                             str(list_of_services))
 
     class ServiceFilesStruct(object):
         # Instance Variables
@@ -55,9 +179,9 @@ class DynamiteConfig(object):
         ip = None
         port = None
 
-        def __init__(self, IP, Port):
-            self.ip = IP
-            self.port = Port
+        def __init__(self, ip, port):
+            self.ip = ip
+            self.port = port
 
         def __str__(self):
             return "FleetAPIEndpoint Struct:\n" \
@@ -243,126 +367,6 @@ class DynamiteConfig(object):
             for (instance_variable_name, value) in self.__dict__.items():
                 scaling_policies.append(value)
             return scaling_policies
-
-    # Converts YAML Config to Python Dictionary
-    def load_config_file(self, path_to_config_file):
-
-        with open(path_to_config_file, "r") as config_yaml:
-            dynamite_yaml_config = yaml.load(config_yaml)
-
-        return dynamite_yaml_config
-
-    def check_for_overlapping_port_ranges(self):
-        self.IntervalTree = IntervalTree()
-
-        for service_name, service_detail in self.Service.__dict__.items():
-            if service_detail.base_instance_prefix_number is not None:
-                interval_start = service_detail.base_instance_prefix_number
-                interval_end = interval_start + service_detail.max_instance
-                new_interval = Interval(interval_start, interval_end)
-
-                # True if <new_interval> is already contained in interval
-                if sorted(self.IntervalTree[new_interval]):
-                    raise OverlappingPortRangeError("Error: " + new_interval + " overlaps with already existing interval(s)"
-                                                    + sorted(self.IntervalTree[new_interval]))
-                else:
-                    self.IntervalTree.add(new_interval)
-
-    # check for existence of service_dependencies
-    def check_for_service_dependencies(self):
-        list_of_services = []
-
-        for service_name in self.Service.__dict__.keys():
-            list_of_services.append(service_name)
-
-        for service_detail in self.Service.__dict__.values():
-            if service_detail.service_dependency is not None:
-                for service_dependency in service_detail.service_dependency:
-                    if service_dependency not in list_of_services:
-                        raise ServiceDependencyNotExistError("Error: Service <" + service_dependency +
-                                                             "> defined as service dependency of service <" +
-                                                             service_detail.name +
-                                                             "> was not found in list of defined services --> " +
-                                                             str(list_of_services))
-
-    def set_instance_variables(self, dynamite_yaml_config, arg_service_folder_list=None):
-
-        self.dynamite_yaml_config = dynamite_yaml_config
-
-        if isinstance(arg_service_folder_list, str):
-            tmp_str = arg_service_folder_list
-            arg_service_folder_list = []
-            arg_service_folder_list.append(tmp_str)
-
-        PathList = self.dynamite_yaml_config['Dynamite']['ServiceFiles']['PathList']
-        self.ServiceFiles = DynamiteConfig.ServiceFilesStruct(PathList)
-
-        # Combine the 2 lists containing paths to the service files
-        if arg_service_folder_list:
-            if self.ServiceFiles.PathList != arg_service_folder_list:
-                if self.ServiceFiles.PathList is not None:
-                    path_set_a = set(self.ServiceFiles.PathList)
-                    path_set_b = set(arg_service_folder_list)
-
-                    self.ServiceFiles.PathList = list(path_set_a)+list(path_set_b-path_set_a)
-                else:
-                    self.ServiceFiles.PathList = arg_service_folder_list
-
-        # check if Folders in ServiceFiles-->PathList exit
-        if self.ServiceFiles.PathList is not None:
-            for folder in self.ServiceFiles.PathList:
-                if not os.path.isdir(folder):
-                    raise NotADirectoryError("Error: " + folder + " is not a valid directory")
-
-        IP = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['ip']
-        Port = self.dynamite_yaml_config['Dynamite']['FleetAPIEndpoint']['port']
-        self.FleetAPIEndpoint = DynamiteConfig.FleetAPIEndpointStruct(IP,Port)
-
-        etcd_application_base_path = self.dynamite_yaml_config['Dynamite']['ETCD']['application_base_path']
-        etcd_metrics_base_path = self.dynamite_yaml_config['Dynamite']['ETCD']['metrics_base_path']
-        self.ETCD = DynamiteConfig.ETCDStruct(etcd_application_base_path, etcd_metrics_base_path)
-
-        ServicesDict = self.dynamite_yaml_config['Dynamite']['Service']
-        self.Service = DynamiteConfig.ServiceStruct(ServicesDict)
-
-        ScalingPolicyDict = self.dynamite_yaml_config['Dynamite']['ScalingPolicy']
-        self.ScalingPolicy = DynamiteConfig.ScalingPolicyStruct(ScalingPolicyDict)
-
-    def init_from_file(self, arg_config_path=None, arg_service_folder_list=None):
-        # Test if Config-File exists. If not, terminate application
-        if not os.path.exists(arg_config_path):
-            raise FileNotFoundError("--config-file: " + arg_config_path + " --> File at given config-path does not exist")
-        else:
-            dynamite_yaml_config = self.load_config_file(arg_config_path)
-
-        self.set_instance_variables(dynamite_yaml_config, arg_service_folder_list)
-
-    def init_from_etcd(self, etcd_endpoint):
-
-        etcdctl = ETCDCTL.create_etcdctl(etcd_endpoint)
-
-        if etcdctl is not None:
-            res = etcdctl.read(ETCDCTL.etcd_key_init_application_configuration)
-            dynamite_config_str = res.value
-
-            if dynamite_config_str is not None and isinstance(dynamite_config_str, str):
-                dynamite_yaml_config = json.loads(dynamite_config_str)
-                self.set_instance_variables(dynamite_yaml_config)
-
-        else:
-            return None
-
-    # Arguments:    arg_config_path: Path to the Dynamite YAML config file
-    #               arg_service_folder (Optional):  List of paths containing service-files.
-    #                                               Can also/additionally be defined in the dynamite yaml configuration file
-    def __init__(self, arg_config_path=None, arg_service_folder_list=None, etcd_endpoint=None):
-
-        if arg_config_path is not None:
-            self.init_from_file(arg_config_path, arg_service_folder_list)
-
-        if etcd_endpoint is not None:
-            self.init_from_etcd(etcd_endpoint)
-
 
 
 if __name__ == "__main__":

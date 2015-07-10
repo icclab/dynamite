@@ -21,32 +21,33 @@ class DynamiteINIT(object):
 
     _logger = None
 
-    def __init__(self, arg_config_path, arg_service_folder, arg_etcd_endpoint):
+    def __init__(self, command_line_arguments):
 
-        self._arg_config_path = arg_config_path
-        self._arg_service_folder = arg_service_folder
-        self._arg_etcd_endpoint = arg_etcd_endpoint
+        self._arg_config_path = command_line_arguments.config_path
+        self._arg_service_folder = command_line_arguments.service_folder
+        self._arg_etcd_endpoint = command_line_arguments.etcd_endpoint
+        self._arg_fleet_endpoint = command_line_arguments.fleet_endpoint
 
         self._logger = logging.getLogger(__name__)
         self._logger.info("Initialized DynamiteINIT with configuration %s", str(self))
 
-        self.etcdctl = self._init_etcdctl(arg_etcd_endpoint)
+        self.etcdctl = self._init_etcdctl(self._arg_etcd_endpoint)
 
         if self.etcdctl is not None:
             dynamite_application_status = self._check_dynamite_application_status_etcd()
 
         if dynamite_application_status is None:
             self._logger.debug("Dynamite was in status <None> --> Initializing Dynamite")
-            self._init_dynamite(arg_config_path, arg_service_folder)
+            self._init_dynamite()
         elif dynamite_application_status == DYNAMITE_APPLICATION_STATUS.INITIALIZING:
             # If the application crashes in its 'initializing' state then everything saved in etcd as well as already
             # running fleet services get destroyed (for now. that process can be refined e.g. check how far the
             # initialization process went and continue from that point)
             self._logger.debug("Dynamite was in status <INITIALIZING> --> RE-Initializing Dynamite")
-            self.re_init_dynamite(arg_config_path, arg_service_folder)
+            self.re_init_dynamite()
         elif dynamite_application_status == DYNAMITE_APPLICATION_STATUS.RUNNING:
             self._logger.debug("Dynamite was in status <RUNNING> --> Recovering Dynamite")
-            self.recover_dynamite(arg_etcd_endpoint)
+            self.recover_dynamite()
         else:
             self._set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.NONE)
 
@@ -84,11 +85,12 @@ class DynamiteINIT(object):
         else:
             return None
 
-    def _init_dynamite(self, arg_config_path, arg_service_folder, init_failed=False):
+    def _init_dynamite(self, init_failed=False):
         self._set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.INITIALIZING)
 
-        self.dynamite_config = DynamiteConfig(arg_config_path=arg_config_path,
-                                              arg_service_folder_list=arg_service_folder)
+        self.dynamite_config = DynamiteConfig(arg_config_path=self._arg_config_path,
+                                              arg_service_folder_list=self._arg_service_folder,
+                                              fleet_endpoint=self._arg_fleet_endpoint)
 
         # If the initialization process failed then first delete everything already saved to etcd and all
         # the running fleet services
@@ -146,19 +148,18 @@ class DynamiteINIT(object):
                     del fleet_service_dict['fleet_service_instances'][fleet_service_instance_name]
 
             etcd_template_key = etcd_base_key + "/" + ETCDCTL.etcd_name_fleet_service_template
-            # fleet_service_dict["attached_services"] = []
             self.etcdctl.write(etcd_template_key, json.dumps(fleet_service_dict))
 
         self._set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.RUNNING)
 
-    def recover_dynamite(self, etcd_endpoint):
+    def recover_dynamite(self):
         self._set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.RECOVERING)
 
-        self.dynamite_config = DynamiteConfig(etcd_endpoint=etcd_endpoint)
+        self.dynamite_config = DynamiteConfig(etcd_endpoint=self._arg_etcd_endpoint, fleet_endpoint=self._arg_fleet_endpoint)
         self.dynamite_service_handler = DynamiteServiceHandler(dynamite_config=self.dynamite_config,
-                                                               etcd_endpoint=etcd_endpoint)
+                                                               etcd_endpoint=self._arg_etcd_endpoint)
 
         self._set_dynamite_application_status_etcd(DYNAMITE_APPLICATION_STATUS.RUNNING)
 
-    def re_init_dynamite(self, arg_config_path, arg_service_folder):
-        self._init_dynamite(arg_config_path, arg_service_folder, init_failed=True)
+    def re_init_dynamite(self):
+        self._init_dynamite(init_failed=True)

@@ -25,7 +25,7 @@ class TestScalingActionSender(Dynamite.Dynamite):
         self._channel = self._connection.channel()
 
         self.delete_queue()
-        self.create_rabbit_mq_queues(self.ARG_RABBITMQ_ENDPOINT)
+        self.create_rabbit_mq_queues(self._rabbitmq_endpoint_argument)
 
         self._scaling_action_sender = RabbitMQScalingActionSender(
             rabbit_mq_endpoint,

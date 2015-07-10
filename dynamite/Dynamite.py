@@ -9,8 +9,10 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.par
 import argparse
 import platform
 import logging
+from multiprocessing import Queue
 
 from dynamite.INIT.DynamiteINIT import DynamiteINIT
+from dynamite.INIT.CommandLineArguments import CommandLineArguments
 from dynamite.GENERAL.MetricsReceiver import MetricsReceiver
 from dynamite.GENERAL.DynamiteHelper import DYNAMITE_ENVIRONMENT_STRUCT
 from dynamite.GENERAL.ServiceEndpoint import ServiceEndpoint
@@ -18,7 +20,7 @@ from dynamite.ENGINE.ScalingEngine import ScalingEngine
 from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguration
 from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
 from dynamite.METRICS.DynamiteMETRICS import DynamiteMETRICS
-from dynamite.GENERAL.ScalingMessageSenderReceiverFactory import *
+from dynamite.GENERAL.ScalingMessageSenderReceiverFactory import CommunicationType, ScalingMessageSenderReceiverFactory
 
 class Dynamite:
 
@@ -28,16 +30,10 @@ class Dynamite:
     DEFAULT_SERVICE_FOLDER = None
     DEFAULT_ETCD_ENDPOINT = "127.0.0.1:4001"
 
-    ARG_CONFIG_PATH = None
-    ARG_SERVICE_FOLDER = None
-    ARG_ETCD_ENDPOINT = None
-    ARG_RABBITMQ_ENDPOINT = None
-
+    _command_line_arguments = None
     _message_sender_receiver_factory = None
 
     _scaling_engine_metrics_communication_queue = None
-    _scaling_action_communication_queue = None
-    _scaling_action_response_communication_queue = None
 
     def __init__(self):
         self._logger = logging.getLogger("dynamite.Dynamite")
@@ -105,24 +101,24 @@ class Dynamite:
                             help="Define Rabbit-MQ Endpoint [IP]:[PORT].",
                             nargs='?',
                             default=None)
+        parser.add_argument("--fleet_endpoint", "-f",
+                            help="Define Fleet Endpoint [IP]:[PORT].",
+                            nargs='?',
+                            default="127.0.0.1:49153")
 
         args = parser.parse_args()
-
-        self.ARG_ETCD_ENDPOINT = args.etcd_endpoint
-        self.ARG_CONFIG_PATH = args.config_file
-        self.ARG_RABBITMQ_ENDPOINT = args.rabbitmq_endpoint
-
-        self._logger.info("Using ectd endpoint %s", self.ARG_ETCD_ENDPOINT)
-        self._logger.info("Using config path %s", self.ARG_CONFIG_PATH)
-        if self.ARG_RABBITMQ_ENDPOINT:
-            self._logger.info("Using rabbitmq endpoint %s", self.ARG_RABBITMQ_ENDPOINT)
+        self._command_line_arguments = CommandLineArguments(args)
 
         # Test if Config-File exists. If not, terminate application
-        if not os.path.exists(self.ARG_CONFIG_PATH):
-            raise FileNotFoundError("--config-file: " + self.ARG_CONFIG_PATH + " --> File at given config-path does not exist")
+        if not os.path.exists(self._command_line_arguments.config_path):
+            raise FileNotFoundError(
+                "--config-file: {} --> File at given config-path does not exist".format(
+                    self._command_line_arguments.config_path
+                )
+            )
 
-        ARG_SERVICE_FOLDER_TMP = args.service_folder if args.service_folder is not None else [self.DEFAULT_SERVICE_FOLDER]
-        self.ARG_SERVICE_FOLDER = []
+        ARG_SERVICE_FOLDER_TMP = self._command_line_arguments.service_folder if self._command_line_arguments.service_folder is not None else [self.DEFAULT_SERVICE_FOLDER]
+        self._command_line_arguments.service_folder = []
 
         # First test if Service-Folder(s) exist. If not, terminate application
         # If folder(s) exist save the absolute path
@@ -130,25 +126,25 @@ class Dynamite:
             if not os.path.isdir(service_file_folder):
                 raise NotADirectoryError("--service-folder: " + service_file_folder + " --> Is not a directory")
             if os.path.isabs(service_file_folder):
-                self.ARG_SERVICE_FOLDER.append(service_file_folder)
+                self._command_line_arguments.service_folder.append(service_file_folder)
             else:
-                self.ARG_SERVICE_FOLDER.append(os.path.abspath(service_file_folder))
+                self._command_line_arguments.service_folder.append(os.path.abspath(service_file_folder))
 
-        self._logger.info("Using service folders %s", str(self.ARG_SERVICE_FOLDER))
+        self._logger.info("Using service folders %s", str(self._command_line_arguments.service_folder))
 
     def create_communication_queues(self):
         communication_type = CommunicationType.InterProcessQueue
         service_endpoint = None
-        if self.ARG_RABBITMQ_ENDPOINT is not None:
+        if self._command_line_arguments.rabbitmq_endpoint is not None:
             communication_type = CommunicationType.RabbitMQ
-            service_endpoint = ServiceEndpoint.from_string(self.ARG_RABBITMQ_ENDPOINT)
+            service_endpoint = ServiceEndpoint.from_string(self._command_line_arguments.rabbitmq_endpoint)
 
         self._message_sender_receiver_factory = ScalingMessageSenderReceiverFactory(communication_type)
         self._message_sender_receiver_factory.initialize_connection(service_endpoint=service_endpoint)
         self._scaling_engine_metrics_communication_queue = Queue()
 
     def parse_config(self):
-        return DynamiteINIT(self.ARG_CONFIG_PATH, self.ARG_SERVICE_FOLDER, self.ARG_ETCD_ENDPOINT)
+        return DynamiteINIT(self._command_line_arguments)
 
     def start_executor(self):
         scaling_response_sender = self._message_sender_receiver_factory.create_response_sender()
@@ -157,13 +153,13 @@ class Dynamite:
         dynamite_executor = DynamiteEXECUTOR(
             scaling_request_receiver,
             scaling_response_sender,
-            etcd_endpoint=self.ARG_ETCD_ENDPOINT
+            etcd_endpoint=self._command_line_arguments.etcd_endpoint
         )
 
         dynamite_executor.start()
 
     def start_metrics_component(self):
-        dynamite_metrics = DynamiteMETRICS(self.ARG_ETCD_ENDPOINT,
+        dynamite_metrics = DynamiteMETRICS(self._command_line_arguments.etcd_endpoint,
                                            self._scaling_engine_metrics_communication_queue)
         dynamite_metrics.start()
 
