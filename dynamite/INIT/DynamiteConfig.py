@@ -31,10 +31,10 @@ class DynamiteConfig(object):
             for service_file_folder in PathList:
                 if not os.path.isdir(service_file_folder):
                     raise NotADirectoryError("Error reading Dynamite Configuration (ServiceFiles-->PathList-->" + service_file_folder + " --> Is not a directory")
-            if os.path.isabs(service_file_folder):
-                checked_list_of_abs_paths.append(service_file_folder)
-            else:
-                checked_list_of_abs_paths.append(os.path.abspath(service_file_folder))
+                if os.path.isabs(service_file_folder):
+                    checked_list_of_abs_paths.append(service_file_folder)
+                else:
+                    checked_list_of_abs_paths.append(os.path.abspath(service_file_folder))
 
             return checked_list_of_abs_paths
 

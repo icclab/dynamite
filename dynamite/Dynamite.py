@@ -119,7 +119,7 @@ class Dynamite:
         if not os.path.exists(self.ARG_CONFIG_PATH):
             raise FileNotFoundError("--config-file: " + self.ARG_CONFIG_PATH + " --> File at given config-path does not exist")
 
-        ARG_SERVICE_FOLDER_TMP = args.service_folder if args.service_folder != None else [self.DEFAULT_SERVICE_FOLDER]
+        ARG_SERVICE_FOLDER_TMP = args.service_folder if args.service_folder is not None else [self.DEFAULT_SERVICE_FOLDER]
         self.ARG_SERVICE_FOLDER = []
 
         # First test if Service-Folder(s) exist. If not, terminate application
