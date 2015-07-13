@@ -23,5 +23,5 @@ class CommandLineArguments:
         self._logger.info("Using ectd endpoint %s", self.etcd_endpoint)
         self._logger.info("Using config path %s", self.config_path)
         self._logger.info("Using fleet endpoint %s", self.fleet_endpoint)
-        if self._rabbitmq_endpoint_argument:
+        if self.rabbitmq_endpoint:
             self._logger.info("Using rabbitmq endpoint %s", self.rabbitmq_endpoint)
