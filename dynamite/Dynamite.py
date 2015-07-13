@@ -114,6 +114,7 @@ class Dynamite:
 
         args = parser.parse_args()
         self._command_line_arguments = CommandLineArguments(args)
+        self._command_line_arguments.log_arguments()
 
         # Test if Config-File exists. If not, terminate application
         if not os.path.exists(self._command_line_arguments.config_path):

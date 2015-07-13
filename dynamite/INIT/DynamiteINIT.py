@@ -55,9 +55,11 @@ class DynamiteINIT(object):
         return "DynamiteINIT(" \
                "arg_config_path='{}'," \
                "arg_service_folder='{}'," \
-               "arg_etcd_endpoint='{}'".format(self._arg_config_path,
-                                               self._arg_service_folder,
-                                               self._arg_etcd_endpoint)
+               "arg_etcd_endpoint='{}'," \
+               "arg_fleet_endpoint='{}'".format(self._arg_config_path,
+                                                self._arg_service_folder,
+                                                self._arg_etcd_endpoint,
+                                                self._arg_fleet_endpoint)
 
     def _init_etcdctl(self, arg_etcd_endpoint):
         etcdctl = ETCDCTL.create_etcdctl(arg_etcd_endpoint)
