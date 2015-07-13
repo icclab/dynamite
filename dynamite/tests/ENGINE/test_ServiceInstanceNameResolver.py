@@ -16,6 +16,9 @@ class TestCachingServiceInstanceNameReceiver:
                 },
                 "apache-uuid-2": {
                     "service_instance_name": "apache_instance_name_2"
+                },
+                "apache-uuid-3": {
+                    "service_instance_name": "apache_instance_name_3.service"
                 }
             },
             "loadbalancer": {
@@ -64,3 +67,12 @@ class TestCachingServiceInstanceNameReceiver:
         resolver = ServiceInstanceNameResolver(etcd_client_mock)
         result = resolver.resolve("nonexisting")
         assert result is None
+
+    def test_etcd_resolve_with_dot_service_ending(self):
+        etcd_client_mock = FakeEtcdClient(self.etcd_content)
+        uuid = "apache-uuid-3"
+
+        resolver = ServiceInstanceNameResolver(etcd_client_mock)
+        result = resolver.resolve(uuid)
+        expected_result = "apache_instance_name_3.service"
+        assert result == expected_result

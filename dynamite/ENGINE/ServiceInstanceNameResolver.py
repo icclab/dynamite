@@ -18,7 +18,9 @@ class ServiceInstanceNameResolver:
                 uuid_path = child.key
                 if uuid_path.endswith(service_uuid):
                     instance_name = self._etcd_client.read(uuid_path + "/" + self.INSTANCE_NAME_ETCD_KEY).value
-                    return instance_name + ".service"
+                    if not instance_name.endswith(".service"):
+                        instance_name += ".service"
+                    return instance_name
         return None
 
 class CachingServiceInstanceNameResolver:
