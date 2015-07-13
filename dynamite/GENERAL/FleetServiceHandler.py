@@ -2,6 +2,7 @@ __author__ = 'brnr'
 
 import requests
 import json
+import logging
 
 from dynamite.GENERAL.FleetService import FleetService, FLEET_STATE_STRUCT
 from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
@@ -19,6 +20,26 @@ class FleetServiceHandler(object):
     is_connected = None
 
     http_json_content_type_header = {'Content-Type': 'application/json'}
+
+    def __init__(self, ip, port):
+
+        self._logger = logging.getLogger(__name__)
+
+        # Maybe add some more validation checks for <ip> and <port> argument
+        if ip is None or not isinstance(ip, str):
+            raise ValueError("Error: <ip> argument needs to be of type <str> (e.g.: '127.0.0.1'")
+
+        if port is None or not isinstance(port, str):
+            raise ValueError("Error: <port> argument needs to be of type <str>")
+
+        self.ip = ip
+        self.port = port
+        self.fleet_base_url = "http://" + self.ip + ":" + self.port + "/fleet/v1/"
+        self.fleet_machines_url = self.fleet_base_url + "machines"
+        self.fleet_units_url = self.fleet_base_url + "units/"
+
+        if not self.test_connection():
+            raise ConnectionError("Error: Could not establish connection to Fleet")
 
     def connect(self):
         pass
@@ -88,6 +109,7 @@ class FleetServiceHandler(object):
             request_url = self.fleet_units_url + service_name
 
             response = requests.delete(request_url)
+            response.raise_for_status()
 
             return response.status_code
         else:
@@ -297,24 +319,6 @@ class FleetServiceHandler(object):
         del fleet_service.fleet_service_instances[instance_name]
 
         return instance_name
-
-    def __init__(self, ip, port):
-
-        # Maybe add some more validation checks for <ip> and <port> argument
-        if ip is None or not isinstance(ip, str):
-            raise ValueError("Error: <ip> argument needs to be of type <str> (e.g.: '127.0.0.1'")
-
-        if port is None or not isinstance(port, str):
-            raise ValueError("Error: <port> argument needs to be of type <str>")
-
-        self.ip = ip
-        self.port = port
-        self.fleet_base_url = "http://" + self.ip + ":" + self.port + "/fleet/v1/"
-        self.fleet_machines_url = self.fleet_base_url + "machines"
-        self.fleet_units_url = self.fleet_base_url + "units/"
-
-        if not self.test_connection():
-            raise ConnectionError("Error: Could not establish connection to Fleet")
 
     def __str__(self):
         pass

@@ -27,7 +27,7 @@ class PyTest(Command):
 setup(
     name='dynamite',
     description='Autoscaling Tool for CoreOS',
-    version='0.0.1.dev1',
+    version='0.0.2.dev1',
     packages=find_packages(),
     url='https://github.com/sandorkan/dynamite',
     license='Apache License 2.0',

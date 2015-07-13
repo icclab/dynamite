@@ -3,6 +3,7 @@ __author__ = 'brnr'
 import json
 import os
 import logging
+import requests.exceptions
 
 from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
 from dynamite.GENERAL.DynamiteExceptions import ServiceFileNotFoundError
@@ -271,8 +272,13 @@ class DynamiteServiceHandler(object):
 
         for service_name, fleet_service in fleet_service_dict.items():
             if fleet_service.name == fleet_service_name:
-                name_of_deleted_fleet_service = fleet_service_handler.remove_fleet_service_instance(fleet_service,
+                try:
+                    name_of_deleted_fleet_service = fleet_service_handler.remove_fleet_service_instance(fleet_service,
                                                                                                     fleet_service_instance_name)
+                except requests.exceptions.HTTPError:
+                    self._logger.exception("Error removing service instance!")
+                    return False
+
                 self.save_fleet_service_state_to_etcd(fleet_service)
 
                 # remove the deleted fleet service instance from etcd
