@@ -25,21 +25,12 @@ etcd_name_fleet_service_template = "fleet_service_template"
 # etcd_key_running_services = "_dynamite/run/service"
 
 
-def test_connection(etcd_base_url):
-    global is_connected
-
-    request_url = etcd_base_url + "_etcd/config"
-
+def test_connection(etcd_client):
     try:
-        response = requests.get(request_url)
-        if response.status_code == 200:
-            is_connected = True
-            return True
-        else:
-            return False
-
-    except requests.exceptions.ConnectionError:
-        print("Error connecting to ETCD. Check if Endpoint is correct: " + ip + ":" + port)
+        etcd_client.get("/")
+        return True
+    except:
+        return False
 
 
 def create_etcdctl(etcd_endpoint):
@@ -66,15 +57,10 @@ def create_etcdctl(etcd_endpoint):
 
         etcd_base_url = "http://" + ip + ":" + port + "/v2/keys/"
 
-        if test_connection(etcd_base_url):
-            etcdctl = etcd.Client(ip, int(port))
-        else:
+        etcdctl = etcd.Client(ip, int(port))
+        if not test_connection(etcdctl):
             raise ConnectionError("Error connecting to ETCD. Check if Endpoint is correct: " + ip + ":" + str(port))
-
-        if etcdctl is not None:
-            return etcdctl
-        else:
-            return None
+        return etcdctl
     else:
         raise ValueError("Error: Probably wrong format of argument <arg_etcd_endpoint>. Format: [IP]:[PORT]")
 
@@ -84,7 +70,4 @@ def get_etcdctl():
     global etcd_base_url
     global etcdctl
 
-    if etcdctl is not None:
-        return etcdctl
-    else:
-        return None
+    return etcdctl
