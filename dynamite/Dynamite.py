@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.par
 import argparse
 import platform
 import logging
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
 
 from dynamite.INIT.DynamiteINIT import DynamiteINIT
 from dynamite.INIT.CommandLineArguments import CommandLineArguments
@@ -21,6 +21,7 @@ from dynamite.ENGINE.ScalingEngineConfiguration import ScalingEngineConfiguratio
 from dynamite.EXECUTOR.DynamiteEXECUTOR import DynamiteEXECUTOR
 from dynamite.METRICS.DynamiteMETRICS import DynamiteMETRICS
 from dynamite.GENERAL.ScalingMessageSenderReceiverFactory import CommunicationType, ScalingMessageSenderReceiverFactory
+
 
 class Dynamite:
 
@@ -34,12 +35,12 @@ class Dynamite:
     _message_sender_receiver_factory = None
 
     _scaling_engine_metrics_communication_queue = None
+    _exit_flag = None
 
     def __init__(self):
         self._logger = logging.getLogger("dynamite.Dynamite")
         self._scaling_engine_metrics_communication_queue = None
-        self._scaling_action_communication_queue = None
-        self._scaling_action_response_communication_queue = None
+        self._exit_flag = Value('i', 0)
 
     def run(self):
         self._logger.info("Started dynamite")
@@ -47,9 +48,14 @@ class Dynamite:
         self.init_arguments()
         config = self.parse_config()
         self.create_communication_queues()
-        self.start_executor()
-        self.start_metrics_component()
-        self.start_scaling_engine(config)
+        try:
+            self.start_executor()
+            self.start_metrics_component()
+            self.start_scaling_engine(config)
+        finally:
+            self._exit_flag.value = 1
+        self._dynamite_metrics.join()
+        self._dynamite_executor.join()
 
     def init_env(self):
         if platform.system() == 'Windows':
@@ -150,18 +156,23 @@ class Dynamite:
         scaling_response_sender = self._message_sender_receiver_factory.create_response_sender()
         scaling_request_receiver = self._message_sender_receiver_factory.create_request_receiver()
 
-        dynamite_executor = DynamiteEXECUTOR(
+        self._dynamite_executor = DynamiteEXECUTOR(
             scaling_request_receiver,
             scaling_response_sender,
+            self._exit_flag,
             etcd_endpoint=self._command_line_arguments.etcd_endpoint
         )
-
-        dynamite_executor.start()
+        self._dynamite_executor.daemon = True
+        self._dynamite_executor.start()
 
     def start_metrics_component(self):
-        dynamite_metrics = DynamiteMETRICS(self._command_line_arguments.etcd_endpoint,
-                                           self._scaling_engine_metrics_communication_queue)
-        dynamite_metrics.start()
+        self._dynamite_metrics = DynamiteMETRICS(
+            self._command_line_arguments.etcd_endpoint,
+            self._scaling_engine_metrics_communication_queue,
+            self._exit_flag
+        )
+        self._dynamite_metrics.daemon = True
+        self._dynamite_metrics.start()
 
     def start_scaling_engine(self, config):
         scaling_engine_config = ScalingEngineConfiguration()
@@ -173,8 +184,8 @@ class Dynamite:
         scaling_engine_config.executed_task_receiver = self._message_sender_receiver_factory.create_response_receiver()
         scaling_engine_config.scaling_action_sender = self._message_sender_receiver_factory.create_request_sender()
 
-        scaling_engine = ScalingEngine(scaling_engine_config)
-        scaling_engine.start()
+        self._scaling_engine = ScalingEngine(scaling_engine_config, self._exit_flag)
+        self._scaling_engine.start()
 
 def main():
     dynamite = Dynamite()

@@ -14,7 +14,11 @@ class ScalingEngine(object):
     AGGREGATE_METRICS = False
     RETRANSMIT_COUNT_OF_FAILED_MESSAGES = 5
 
-    def __init__(self, configuration):
+    _exit_flag = None
+    _running = False
+
+    def __init__(self, configuration, exit_flag):
+        self._exit_flag = exit_flag
         self._logger = logging.getLogger(__name__)
         self._logger.info("Initialized scaling engine with configuration %s", repr(configuration))
 
@@ -30,10 +34,11 @@ class ScalingEngine(object):
         self._service_instance_name_resolver = CachingServiceInstanceNameResolver(instance_name_resolver)
 
     def start(self):
+        self._running = True
         self._logger.info("Starting scaling engine")
         self._start_minimal_required_services()
 
-        while True:
+        while self._running:
             try:
                 metrics_message = self._retreive_metrics()
                 scaling_actions = self._rule_checker.check_and_return_needed_scaling_actions(metrics_message)
@@ -43,7 +48,9 @@ class ScalingEngine(object):
                 self._resend_failed_messages(executed_tasks)
             except Exception:
                 self._logger.exception("Unexpected error in scaling engine occurred!")
-                pass
+            finally:
+                if self._exit_flag == 1:
+                    self._running = False
 
     def _retreive_metrics(self):
         # get metrics from etcd queue

@@ -19,6 +19,7 @@ class DynamiteEXECUTOR(Process):
     EXECUTOR_POLL_DELAY_IN_SECONDS = 1
 
     _logger = None
+    _exit_flag = None
 
     _etcd_endpoint = "127.0.0.1:4001"
 
@@ -31,10 +32,12 @@ class DynamiteEXECUTOR(Process):
     def __init__(self,
                  scaling_request_receiver,
                  scaling_response_sender,
+                 exit_flag,
                  etcd_endpoint=None
                  ):
         super(DynamiteEXECUTOR, self).__init__()
 
+        self._exit_flag = exit_flag
         self._etcd_endpoint = etcd_endpoint
 
         self._scaling_request_receiver = scaling_request_receiver
@@ -43,25 +46,28 @@ class DynamiteEXECUTOR(Process):
         atexit.register(self._close_connections)
 
     def run(self):
-        self._logger = logging.getLogger(__name__)
-        self._logger.info("Initialized DynamiteEXECUTOR with configuration %s", str(self))
+        try:
+            self._logger = logging.getLogger(__name__)
+            self._logger.info("Initialized DynamiteEXECUTOR with configuration %s", str(self))
 
-        self._create_dynamite_config(self._etcd_endpoint)
-        self._create_dynamite_service_handler(self._dynamite_config, self._etcd_endpoint)
+            self._create_dynamite_config(self._etcd_endpoint)
+            self._create_dynamite_service_handler(self._dynamite_config, self._etcd_endpoint)
 
-        self._scaling_request_receiver.connect()
-        self._scaling_response_sender.connect()
+            self._scaling_request_receiver.connect()
+            self._scaling_response_sender.connect()
 
-        while True:
-            try:
-                scaling_request = self._scaling_request_receiver.receive()
-                if scaling_request is None:
-                    time.sleep(self.EXECUTOR_POLL_DELAY_IN_SECONDS)
-                    continue
+            while True:
+                try:
+                    scaling_request = self._scaling_request_receiver.receive()
+                    if scaling_request is None:
+                        time.sleep(self.EXECUTOR_POLL_DELAY_IN_SECONDS)
+                        continue
 
-                self._process_received_request(scaling_request)
-            except:
-                self._logger.exception("Unexpected exception in Executor component")
+                    self._process_received_request(scaling_request)
+                except:
+                    self._logger.exception("Unexpected exception in Executor component")
+        finally:
+            self._exit_flag.value = 1
 
     def _process_received_request(self, scaling_request):
         response = None

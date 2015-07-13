@@ -1,7 +1,7 @@
 __author__ = 'bloe'
 
 from unittest.mock import Mock
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
 from dynamite.tests.Fakes.ProcessSimulator import ProcessSimulator
 
 from dynamite.METRICS.DynamiteMETRICS import DynamiteMETRICS
@@ -65,8 +65,9 @@ class TestDynamiteMETRICS:
         policies_mock.scale_down.metric_aggregated = True
         policies_mock.get_scaling_policies = Mock(return_value=[policies_mock.scale_up, policies_mock.scale_down])
 
+        exit_flag = Value('i', 0)
         result_queue = Queue()
-        metrics_component = DynamiteMETRICS(self.ETCD_ENDPOINT, result_queue)
+        metrics_component = DynamiteMETRICS(self.ETCD_ENDPOINT, result_queue, exit_flag)
         metrics_component.etcdctl = etcdctl_mock
         metrics_component.configuration = config_mock
 

@@ -31,30 +31,37 @@ class DynamiteMETRICS(Process):
     _service_metrics_dictionary = {}
 
     _dynamite_config = None
+    _exit_flag = None
 
     configuration = None
     etcdctl = None
 
     def __init__(self,
                  etcd_endpoint,
-                 scaling_engine_metrics_communication_queue):
+                 scaling_engine_metrics_communication_queue,
+                 exit_flag
+                 ):
         super(DynamiteMETRICS, self).__init__()
-
+        self._exit_flag = exit_flag
         self._scaling_engine_metrics_communication_queue = scaling_engine_metrics_communication_queue
         self._etcd_endpoint = etcd_endpoint
 
     def run(self):
+        try:
+            self._logger = logging.getLogger(__name__)
+            self._dynamite_config = self.configuration or DynamiteConfig(etcd_endpoint=self._etcd_endpoint)
+            self._logger.info("Initialized DynamiteMETRICS with configuration %s", str(self))
+            self._running = True
+            self.etcdctl = self.etcdctl or self._init_etcdctl(self._etcd_endpoint)
+            self._create_etcd_service_metric_information_instances(self._dynamite_config)
 
-        self._logger = logging.getLogger(__name__)
-        self._dynamite_config = self.configuration or DynamiteConfig(etcd_endpoint=self._etcd_endpoint)
-        self._logger.info("Initialized DynamiteMETRICS with configuration %s", str(self))
-        self._running = True
-        self.etcdctl = self.etcdctl or self._init_etcdctl(self._etcd_endpoint)
-        self._create_etcd_service_metric_information_instances(self._dynamite_config)
-
-        while self._running:
-            self._get_metrics_from_etcd()
-            time.sleep(1)
+            while self._running:
+                self._get_metrics_from_etcd()
+                time.sleep(1)
+                if self._exit_flag.value == 1:
+                    self._running = False
+        finally:
+            self._exit_flag.value = 1
 
     def _init_etcdctl(self, etcd_endpoint):
         etcdctl = ETCDCTL.create_etcdctl(etcd_endpoint)
