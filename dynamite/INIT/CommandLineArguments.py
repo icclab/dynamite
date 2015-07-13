@@ -13,6 +13,7 @@ class CommandLineArguments:
     def __init__(self, argument_parser_result):
         self._logger = logging.getLogger(__name__)
 
+        self.service_folder = argument_parser_result.service_folder
         self.etcd_endpoint = argument_parser_result.etcd_endpoint
         self.config_path = argument_parser_result.config_file
         self.rabbitmq_endpoint = argument_parser_result.rabbitmq_endpoint
