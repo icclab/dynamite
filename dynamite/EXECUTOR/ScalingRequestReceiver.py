@@ -3,6 +3,7 @@ __author__ = 'bloe'
 import logging
 
 from dynamite.EXECUTOR.DynamiteScalingRequest import DynamiteScalingRequest
+from queue import Empty
 
 class ScalingRequestReceiver:
 
@@ -15,13 +16,18 @@ class ScalingRequestReceiver:
         pass
 
     def receive(self):
-        received_scaling_request_string = self._process_queue.get()
-        scaling_request = DynamiteScalingRequest.from_json_string(
-            received_scaling_request_string,
-            message_processed_callback=lambda: None
-        )
-        self._logger.debug("Received scaling request:{:s}".format(received_scaling_request_string))
-        return scaling_request
+        try:
+            received_scaling_request_string = self._process_queue.get(block=False)
+
+            scaling_request = DynamiteScalingRequest.from_json_string(
+                received_scaling_request_string,
+                message_processed_callback=lambda: None
+            )
+            self._logger.debug("Received scaling request:{:s}".format(received_scaling_request_string))
+            return scaling_request
+        except Empty:
+            self._logger.debug("No request received.")
+            return None
 
     def close(self):
         self._logger.debug("Closing connection to queue")
