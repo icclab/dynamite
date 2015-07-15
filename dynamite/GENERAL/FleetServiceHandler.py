@@ -279,23 +279,21 @@ class FleetServiceHandler(object):
         fleet_service.fleet_service_instances[new_fleet_service_name] = new_fleet_instance
         return new_fleet_instance
 
+    # fleet_service expected type: dynamite.GENERAL.FleetService
     def remove_fleet_service_instance(self, fleet_service, fleet_service_instance_name=None):
-
-        if not isinstance(fleet_service, FleetService):
-            raise IllegalArgumentError("Error: argument <fleet_service> needs to be of type "
-                                       "dynamite.GENERAL.FleetService")
 
         # Don't remove more instances than are minimally needed
         if len(fleet_service.fleet_service_instances) == fleet_service.service_config_details.min_instance:
             return None
+
+        if fleet_service_instance_name is not None:
+            instance_name = fleet_service_instance_name
 
         # Remove used port/instance numbers
         if fleet_service.used_port_numbers is not None:
             # e.g a@12021.service --> instance_number = 12021
 
             if fleet_service_instance_name is not None:
-                instance_name = fleet_service_instance_name
-
                 instance_number = instance_name.split("@")
                 instance_number = instance_number[1].split(".")
                 instance_number = int(instance_number[0])
@@ -311,8 +309,9 @@ class FleetServiceHandler(object):
 
         fleet_service_instance = fleet_service.fleet_service_instances[instance_name]
 
-        for i in range(fleet_service.service_config_details.ports_per_instance):
-            fleet_service.used_port_numbers[fleet_service.used_port_numbers.index(instance_number+i)] = 0
+        if fleet_service.is_template:
+            for i in range(fleet_service.service_config_details.ports_per_instance):
+                fleet_service.used_port_numbers[fleet_service.used_port_numbers.index(instance_number+i)] = 0
 
         self.destroy(fleet_service_instance)
 

@@ -287,8 +287,7 @@ class DynamiteServiceHandler(object):
 
                     etcdctl = ETCDCTL.get_etcdctl()
                     etcdctl.delete(etcd_instance_key)
-
-            return True
+                return True
         return None
 
     def save_fleet_service_state_to_etcd(self, fleet_service):

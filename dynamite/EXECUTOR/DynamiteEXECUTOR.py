@@ -56,7 +56,7 @@ class DynamiteEXECUTOR(Process):
             self._scaling_request_receiver.connect()
             self._scaling_response_sender.connect()
 
-            while True:
+            while self._exit_flag.value == 0:
                 try:
                     scaling_request = self._scaling_request_receiver.receive()
                     if scaling_request is None:
