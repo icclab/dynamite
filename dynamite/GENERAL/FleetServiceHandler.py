@@ -6,6 +6,19 @@ import logging
 
 from dynamite.GENERAL.FleetService import FleetService, FLEET_STATE_STRUCT
 from dynamite.GENERAL.DynamiteExceptions import IllegalArgumentError
+from dynamite.GENERAL.Retry import retry, retry_on_condition
+
+class FleetSubmissionError(Exception):
+    pass
+
+class FleetCommunicationError(Exception):
+    pass
+
+class FleetStartError(Exception):
+    pass
+
+class FleetDestroyError(Exception):
+    pass
 
 class FleetServiceHandler(object):
 
@@ -87,7 +100,32 @@ class FleetServiceHandler(object):
             # curl http://127.0.0.1:49153/fleet/v1/units/example.service -H "Content-Type: application/json" -X PUT -d @example.service.json
             response = requests.put(request_url, headers=request_header, data=request_data)
 
+            self.check_unit_submitted_and_repeat_on_error(fleet_service_instance.name)
             return response.status_code
+        else:
+            return None
+
+    @retry(FleetSubmissionError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    def check_unit_submitted_and_repeat_on_error(self, unit_name):
+        state = self.get_state_of_unit_and_retry_on_error(unit_name)
+        if state is not None:
+            return True
+        else:
+            raise FleetSubmissionError("Submitted unit is in an invalid state: {}".format(unit_name))
+
+    @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    def get_state_of_unit_and_retry_on_error(self, fleet_unit):
+        request_url = self.fleet_units_url + fleet_unit
+        response = requests.get(request_url)
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as httpError:
+            raise FleetCommunicationError(
+                "Unable to communicate with fleet while trying to get the state of: {}!".format(fleet_unit)
+            ) from httpError
+        json_dictionary_of_response = json.loads(response.content.decode('utf-8'))
+        if "currentState" in json_dictionary_of_response:
+            return json_dictionary_of_response["currentState"]
         else:
             return None
 
@@ -97,7 +135,7 @@ class FleetServiceHandler(object):
     def destroy(self, fleet_service_instance):
         if fleet_service_instance.state is not None:
 
-            # Destroy Service announcer if one should exist
+            # Destroy attached services if one should exist
             if fleet_service_instance.has_attached_services():
                 for attached_service_instance in fleet_service_instance.attached_services:
                     self.destroy(attached_service_instance)
@@ -109,13 +147,37 @@ class FleetServiceHandler(object):
             request_url = self.fleet_units_url + service_name
 
             response = requests.delete(request_url)
-            response.raise_for_status()
+            # if service does not exist destroy has no effect, but do not treat it as error
+            if response.status_code != 404:
+                try:
+                    response.raise_for_status()
+                    self._check_if_service_destroyed_and_retry_if_not(service_name)
+                except requests.HTTPError as httpError:
+                    raise FleetCommunicationError(
+                        "Unable to communicate with fleet while destroying {}!".format(service_name)
+                    ) from httpError
 
             return response.status_code
         else:
             return None
 
+    @retry_on_condition(tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__), condition_fail_description="Service not yet destroyed")
+    @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    def _check_if_service_destroyed_and_retry_if_not(self, service_instance_name):
+        request_url = self.fleet_units_url + service_instance_name
+        response = requests.get(request_url)
+        service_is_still_found_in_fleet = response.status_code != 404
+        if service_is_still_found_in_fleet:
+            try:
+                response.raise_for_status()
+                return False
+            except requests.HTTPError as httpError:
+                raise FleetCommunicationError from httpError
+        else:
+            return True
+
     # load, unload, start and stop should all take advantage of the _change_state function
+    @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
     def _change_state(self, fleet_service_instance, new_state):
 
         if new_state not in FLEET_STATE_STRUCT.ALLOWED_STATES:
@@ -132,6 +194,16 @@ class FleetServiceHandler(object):
 
         # curl http://127.0.0.1:49153/fleet/v1/units/example.service -H "Content-Type: application/json" -X PUT -d '{"desiredState": "loaded"}'
         response = requests.put(request_url, headers=request_header, data=request_data)
+
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as httpError:
+            raise FleetCommunicationError(
+                "Unable to communicate with fleet while changing the state of unit {} to {}!".format(
+                    service_name,
+                    new_state
+                )
+            ) from httpError
 
         return response.status_code
 
@@ -166,16 +238,12 @@ class FleetServiceHandler(object):
             raise IllegalArgumentError("Error: Argument <fleet_service> not instance of type <dynamite.GENERAL.FleetService.FleetServiceInstance>")
 
         if fleet_service_instance.state == FLEET_STATE_STRUCT.LOADED or fleet_service_instance.state == FLEET_STATE_STRUCT.LAUNCHED:
-            response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.INACTIVE)
+            self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.INACTIVE)
 
-            # Also unload service announcer after parent service was unloaded
-            if fleet_service_instance.has_attached_services():
-                for attached_service_instances in fleet_service_instance.attached_services:
-                    response = self._change_state(attached_service_instances, FLEET_STATE_STRUCT.INACTIVE)
-
-            return response
-        else:
-            return None
+        # Also unload attached services after parent service was unloaded
+        if fleet_service_instance.has_attached_services():
+            for attached_service_instances in fleet_service_instance.attached_services:
+                self._change_state(attached_service_instances, FLEET_STATE_STRUCT.INACTIVE)
 
     def start(self, fleet_service, fleet_service_instance):
         if not isinstance(fleet_service_instance, FleetService.FleetServiceInstance):
@@ -194,14 +262,35 @@ class FleetServiceHandler(object):
             self.submit(fleet_service, fleet_service_instance)
             response = self._change_state(fleet_service_instance, FLEET_STATE_STRUCT.LAUNCHED)
 
-            # Also start service announcer after parent service was started
+            # Also start attached services after parent service was started
             if fleet_service_instance.has_attached_services():
                 for attached_service_instance in fleet_service_instance.attached_services:
                     response = self._change_state(attached_service_instance, FLEET_STATE_STRUCT.LAUNCHED)
 
+            services_started = self._check_if_service_and_attached_services_started(fleet_service_instance)
+            if not services_started:
+                raise FleetStartError(
+                    "Could not start Service {} and or attached services!".format(
+                        fleet_service_instance.name
+                    )
+                )
+
             return response
         else:
             return None
+
+    @retry_on_condition(tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__),
+                        condition_fail_description="Service not in LAUNCHED state")
+    def _check_if_service_and_attached_services_started(self, service_instance):
+        state = self.get_state_of_unit_and_retry_on_error(service_instance.name)
+        if state != FLEET_STATE_STRUCT.LAUNCHED:
+            return False
+        if service_instance.has_attached_services():
+                for attached_service_instance in service_instance.attached_services:
+                    state = self.get_state_of_unit_and_retry_on_error(attached_service_instance.name)
+                    if state != FLEET_STATE_STRUCT.LAUNCHED:
+                        return False
+        return True
 
     def stop(self, fleet_service_instance):
         if not isinstance(fleet_service_instance, FleetService.FleetServiceInstance):
@@ -309,11 +398,14 @@ class FleetServiceHandler(object):
 
         fleet_service_instance = fleet_service.fleet_service_instances[instance_name]
 
+        self.destroy(fleet_service_instance)
+        service_destroyed = self._check_if_service_destroyed_and_retry_if_not(instance_name)
+        if not service_destroyed:
+            raise FleetDestroyError("Could not destroy unit {}".format(instance_name))
+
         if fleet_service.is_template:
             for i in range(fleet_service.service_config_details.ports_per_instance):
                 fleet_service.used_port_numbers[fleet_service.used_port_numbers.index(instance_number+i)] = 0
-
-        self.destroy(fleet_service_instance)
 
         del fleet_service.fleet_service_instances[instance_name]
 

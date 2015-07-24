@@ -3,6 +3,7 @@ __author__ = 'brnr'
 from multiprocessing import Process
 from dynamite.INIT.DynamiteServiceHandler import DynamiteServiceHandler
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
+from dynamite.GENERAL.FleetServiceHandler import FleetCommunicationError, FleetStartError, FleetSubmissionError, FleetDestroyError
 
 from dynamite.EXECUTOR.DynamiteScalingResponse import DynamiteScalingResponse
 from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
@@ -17,6 +18,7 @@ import time
 class DynamiteEXECUTOR(Process):
 
     EXECUTOR_POLL_DELAY_IN_SECONDS = 1
+    RETRY_FAILED_REQUESTS_TIMES = 5
 
     _logger = None
     _exit_flag = None
@@ -69,20 +71,57 @@ class DynamiteEXECUTOR(Process):
         finally:
             self._exit_flag.value = 1
 
-    def _process_received_request(self, scaling_request):
-        response = None
-        if scaling_request.command == DynamiteScalingCommand.SCALE_UP:
-            service_name = scaling_request.service_name
-            response = self._dynamite_service_handler.add_new_fleet_service_instance(service_name)
-        elif scaling_request.command == DynamiteScalingCommand.SCALE_DOWN:
-            service_name = scaling_request.service_name
-            service_instance_name = scaling_request.service_instance_name
-            response = self._dynamite_service_handler.remove_fleet_service_instance(service_name, service_instance_name)
+    def _process_received_request(self, scaling_request, fail_count=0):
+        scaling_success = False
+        created_service_instance = None
 
-        scaling_success = True if response is not None else False
+        try:
+            if scaling_request.command == DynamiteScalingCommand.SCALE_UP:
+                service_name = scaling_request.service_name
+                created_service_instance = self._dynamite_service_handler.add_new_fleet_service_instance(service_name)
+            elif scaling_request.command == DynamiteScalingCommand.SCALE_DOWN:
+                service_name = scaling_request.service_name
+                service_instance_name = scaling_request.service_instance_name
+                self._dynamite_service_handler.remove_fleet_service_instance(service_name, service_instance_name)
+            scaling_success = True
+        except FleetSubmissionError:
+            self._logger.exception("Submitting fleet file failed!")
+            retry_success = self._retry_processing_request(scaling_request, fail_count)
+            if retry_success:
+                return
+        except FleetStartError:
+            self._logger.exception("Starting fleet service failed!")
+            if created_service_instance is not None:
+                self._unload_unit(created_service_instance)
+            retry_success = self._retry_processing_request(scaling_request, fail_count)
+            if retry_success:
+                return
+        except FleetDestroyError:
+            self._logger.exception("Destroying fleet service failed!")
+            retry_success = self._retry_processing_request(scaling_request, fail_count)
+            if retry_success:
+                return
+        except FleetCommunicationError:
+            self._logger.exception("Communication with fleet failed!")
+
         scaling_response = DynamiteScalingResponse.from_scaling_request(scaling_request, scaling_success)
         self._scaling_response_sender.send_response(scaling_response)
         scaling_response.message_processed()
+
+    def _unload_unit(self, created_service_instance):
+        try:
+            self._dynamite_service_handler.FleetServiceHandler.unload(created_service_instance)
+        except FleetCommunicationError:
+            self._logger.exception("Could not unload fleet file! {}".format(repr(created_service_instance)))
+
+    def _retry_processing_request(self, scaling_request, fail_count):
+        if fail_count < self.RETRY_FAILED_REQUESTS_TIMES:
+            self._logger.error("Retrying processing request again!")
+            self._process_received_request(scaling_request, fail_count=fail_count+1)
+            return True
+        else:
+            self._logger.error("Retried {} times, giving up!".format(self.RETRY_FAILED_REQUESTS_TIMES))
+            return False
 
     def _create_dynamite_config(self, etcd_endpoint):
         self._dynamite_config = DynamiteConfig(etcd_endpoint=etcd_endpoint)

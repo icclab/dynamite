@@ -241,7 +241,6 @@ class DynamiteServiceHandler(object):
             raise IllegalArgumentError("Error: Argument <fleet_service_name> not of type <str>")
 
         if fleet_service_name in self.FleetServiceDict:
-
             fleet_service = self.FleetServiceDict[fleet_service_name]
             new_fleet_service_instance = self.FleetServiceHandler.create_new_fleet_service_instance(fleet_service)
 
@@ -260,11 +259,8 @@ class DynamiteServiceHandler(object):
                 etcdctl = ETCDCTL.get_etcdctl()
                 etcdctl.write(etcd_instance_key, fleet_service_instance_json)
 
-                return True
-            else:
-                return None
-        else:
-            return None
+                return new_fleet_service_instance
+        return None
 
     def remove_fleet_service_instance(self, fleet_service_name, fleet_service_instance_name=None):
         fleet_service_handler = self.FleetServiceHandler
@@ -289,6 +285,12 @@ class DynamiteServiceHandler(object):
                     etcdctl.delete(etcd_instance_key)
                 return True
         return None
+
+    def unload_fleet_service_instance(self, fleet_service_name, fleet_service_instance_name):
+        for service_name, fleet_service in self.FleetServiceDict.items():
+            if fleet_service.name == fleet_service_name:
+                fleet_service.fleet_service_instances
+                self.FleetServiceHandler.unload()
 
     def save_fleet_service_state_to_etcd(self, fleet_service):
 
