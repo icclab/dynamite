@@ -56,7 +56,7 @@ class FleetService(object):
         else:
             self.is_template = is_template
 
-        if is_template and self.service_config_details.type != "service_announcer":
+        if is_template and self.service_config_details.type != "attached_service":
             if used_port_numbers is not None:
                 self.used_port_numbers = used_port_numbers
             else:

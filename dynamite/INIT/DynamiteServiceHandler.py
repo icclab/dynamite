@@ -158,15 +158,15 @@ class DynamiteServiceHandler(object):
         # paths defined in 'Dynamite.ServiceFiles.PathList
         #
         # If the file exits a new FleetService gets created
-        #   If the file/service uses a 'Service_Announcer' a FleetService for the Service_Announcer gets created and
+        #   If the file/service uses an attached service a FleetService for the attached service gets created and
         #   attached to the 'original/parent' FleetService
-        #       that attach the services as defined in the DynamiteConfig. The attached service should be saved in a
+        #       that attaches the services as defined in the DynamiteConfig. The attached service should be saved in a
         #       list or dictionary
         for service_name, service_info_dict in service_dict.items():
 
             name_of_unit_file = service_info_dict["name_of_unit_file"]
 
-            if name_of_unit_file in dict_of_files and service_info_dict["service_details"].type != "service_announcer":
+            if name_of_unit_file in dict_of_files and service_info_dict["service_details"].type != "attached_service":
 
                 service_details = service_info_dict["service_details"]
                 path_to_unit_file = dict_of_files[name_of_unit_file]
@@ -205,7 +205,7 @@ class DynamiteServiceHandler(object):
 
                 fleet_service_dict[service_info_dict["service_name"]] = fleet_service
                 # TODO: find out if attached service
-            elif service_info_dict["service_details"].type == "service_announcer":
+            elif service_info_dict["service_details"].type == "attached_service":
                 pass
             else:
                 raise ServiceFileNotFoundError(name_of_unit_file + " Service-File was not found")

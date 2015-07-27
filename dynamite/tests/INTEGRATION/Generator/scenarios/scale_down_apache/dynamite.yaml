@@ -31,10 +31,10 @@ Dynamite:
         ScalingPolicy: scale_down
     webserver_announcer:
       name_of_unit_file: webserver_announcer@.service
-      type: service_announcer
+      type: attached_service
     webserver_logger:
       name_of_unit_file: webserver_logger@.service
-      type: service_announcer
+      type: attached_service
   ScalingPolicy:
     scale_up:
       service_type: loadbalancer
