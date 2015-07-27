@@ -12,6 +12,7 @@ from dynamite.GENERAL.DynamiteExceptions import ServiceAnnouncerFileNotFoundErro
 from dynamite.GENERAL.FleetServiceHandler import FleetServiceHandler
 from dynamite.GENERAL.FleetService import FleetService
 from dynamite.GENERAL import ETCDCTL
+from dynamite.GENERAL.FleetServiceHandler import FleetSubmissionError
 
 from dynamite.INIT.DynamiteConfig import DynamiteConfig
 
@@ -242,10 +243,15 @@ class DynamiteServiceHandler(object):
 
         if fleet_service_name in self.FleetServiceDict:
             fleet_service = self.FleetServiceDict[fleet_service_name]
+
             new_fleet_service_instance = self.FleetServiceHandler.create_new_fleet_service_instance(fleet_service)
 
             if new_fleet_service_instance is not None:
-                self.FleetServiceHandler.start(fleet_service, new_fleet_service_instance)
+                try:
+                    self.FleetServiceHandler.start(fleet_service, new_fleet_service_instance)
+                except FleetSubmissionError as submissionError:
+                    self.FleetServiceHandler.remove_fleet_service_instance(fleet_service, new_fleet_service_instance, False)
+                    raise submissionError
 
             # save the updated fleet service into etcd (this is mainly done here to save the updated used_port_numbers
             # into etcd so that when dynamite restarts it handles those correctly

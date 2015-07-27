@@ -20,3 +20,20 @@ Dynamite heavily levarages fleet to achieve this
  2. State Fleet API Endpoint
  3. State services used by the application
  4. Define scaling policies
+ 
+ ## Technical Documentation
+ 
+### etcd paths
+Dynamite uses etcd to write the state of the application its configuration and the fleet unit files of all services to.   
+Everything written to etcd from dynamite is saved in the hidden folder `/_dynamite`.
+
+#### /_dynamite/state/application_status
+This is the status of dynamite. It allows dynamite to recover from failure.
+
+#### /_dynamite/run/service
+This  folder contains a subfolder for each service running. 
+Inside the folder there is a fleet service template key (`/_dynamite/run/service/<service_name>/fleet_service_template`) where the description of the service (as JSON) is written to.
+The description (JSON) of all the created instances of the service are also available in this folder (`/_dynamite/run/service/<service_name>/<instance_name>`)
+
+#### /_dynamite/init/application_configuration
+The dynamite configuration file (YAML) is read at startup, transformed to JSON and written to etcd in the path `/_dynamite/init/application_configuration`.

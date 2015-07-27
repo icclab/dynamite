@@ -100,18 +100,25 @@ class FleetServiceHandler(object):
             # curl http://127.0.0.1:49153/fleet/v1/units/example.service -H "Content-Type: application/json" -X PUT -d @example.service.json
             response = requests.put(request_url, headers=request_header, data=request_data)
 
-            self.check_unit_submitted_and_repeat_on_error(fleet_service_instance.name)
+            self._check_if_unit_exists_and_retry_if_not(fleet_service_instance.name)
             return response.status_code
         else:
             return None
 
     @retry(FleetSubmissionError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
-    def check_unit_submitted_and_repeat_on_error(self, unit_name):
-        state = self.get_state_of_unit_and_retry_on_error(unit_name)
-        if state is not None:
-            return True
+    @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    def _check_if_unit_exists_and_retry_if_not(self, fleet_unit):
+        request_url = self.fleet_units_url + fleet_unit
+        response = requests.get(request_url)
+        if response.status_code == requests.codes.not_found:
+            raise FleetSubmissionError("Submitted unit is in an invalid state: {}".format(fleet_unit))
         else:
-            raise FleetSubmissionError("Submitted unit is in an invalid state: {}".format(unit_name))
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as httpError:
+                raise FleetCommunicationError(
+                    "Could not talk to fleet to check if {} exists".format(fleet_unit)
+                ) from httpError
 
     @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
     def get_state_of_unit_and_retry_on_error(self, fleet_unit):
@@ -369,11 +376,7 @@ class FleetServiceHandler(object):
         return new_fleet_instance
 
     # fleet_service expected type: dynamite.GENERAL.FleetService
-    def remove_fleet_service_instance(self, fleet_service, fleet_service_instance_name=None):
-
-        # Don't remove more instances than are minimally needed
-        if len(fleet_service.fleet_service_instances) == fleet_service.service_config_details.min_instance:
-            return None
+    def remove_fleet_service_instance(self, fleet_service, fleet_service_instance_name=None, destroy_service=True):
 
         if fleet_service_instance_name is not None:
             instance_name = fleet_service_instance_name
@@ -398,10 +401,11 @@ class FleetServiceHandler(object):
 
         fleet_service_instance = fleet_service.fleet_service_instances[instance_name]
 
-        self.destroy(fleet_service_instance)
-        service_destroyed = self._check_if_service_destroyed_and_retry_if_not(instance_name)
-        if not service_destroyed:
-            raise FleetDestroyError("Could not destroy unit {}".format(instance_name))
+        if destroy_service:
+            self.destroy(fleet_service_instance)
+            service_destroyed = self._check_if_service_destroyed_and_retry_if_not(instance_name)
+            if not service_destroyed:
+                raise FleetDestroyError("Could not destroy unit {}".format(instance_name))
 
         if fleet_service.is_template:
             for i in range(fleet_service.service_config_details.ports_per_instance):
