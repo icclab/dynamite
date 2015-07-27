@@ -250,7 +250,7 @@ class DynamiteServiceHandler(object):
                 try:
                     self.FleetServiceHandler.start(fleet_service, new_fleet_service_instance)
                 except FleetSubmissionError as submissionError:
-                    self.FleetServiceHandler.remove_fleet_service_instance(fleet_service, new_fleet_service_instance, False)
+                    self.FleetServiceHandler.remove_fleet_service_instance(fleet_service, new_fleet_service_instance.name, False)
                     raise submissionError
 
             # save the updated fleet service into etcd (this is mainly done here to save the updated used_port_numbers
