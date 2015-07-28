@@ -19,6 +19,64 @@ Dynamite heavily levarages fleet and etcd to achieve this
 ## Using Dynamite
 Dynamite is designed to be used in a CoreOS cluster in a container. You should usually not need to install and run the application directly. Instead it is recommended that you use the existing [docker image](https://registry.hub.docker.com/u/icclabcna/zurmo_dynamite/) for dynamite. This way you only need to follow the instructions of how to use the docker image and write a configuration file for dynamite. 
 
+## Concepts
+There are a few things you should now about dynamite before using it. The following sections provide some basic information about how dynamite works and what features it has.
+
+### Services
+Dynamite assumes that your application can be split in many different services. If this is not the case, dynamite isn't that useful because the smallest unit dynamite can handle is a service. Usually you want a scaling engine to scale up or scale down the application and dynamite achieves that by creating new resp. destroying existing services. That's why the application should consist of services, otherwise it won't be scalable at all (at least not by dynamite).  
+When we talk about services in this document we mean fleet services.
+
+### Etcd for service registry & metrics storage
+Dynamite depends on etcd and fleet. If none of them are running in your environment, dynamite is probably not the right tool for you. It is also important that the services of the application behave in a way that dynamite is able to get some information about them from etcd.
+
+Dynamite requires that each service instance registers itself to etcd. The path is built dynamically from the information given through the configuration file. Dynamite needs to resolve a service id to a service instance name.   
+This is why it searches the key `service_instance_name` in the etcd path: `$application_base_path/$service_type/$service_instance_uuid/`.
+A service should register like that in etcd:
+```
+$application_base_path/$service_type/$service_instance_uuid/service_instance_name
+
+# Concrete example: 
+/services/webserver/9ed076d2-f6f0-42c0-ae04-63c817abe456/service_instance_name
+```
+
+But also the metrics need to be in a defined path (dynamically generated):
+```
+$metrics_base_path/$service_type/$service_instance_uuid/$metric/$date
+
+# Concrete example:
+/metrics/webserver/88e9916e-2342-4acf-a93a-1e3a6551c1da/cpu_user/2015-07-28T13:15:50.631Z
+```
+The value of the metric key is either in JSON format or just a single value.
+
+Explanation of the dynamic path contents:
+  * $metrics_base_path and $application_base_path can be defined by the user in the configuration file
+  * $service_type: The service type is read from the configuration file (scaling policy)
+  * $service_instance_uuid: An ID for the service instance. You can use your own IDs to identify service instances. It does not matter how you generate this ID. (UUID recommended)
+  * $metric: the metric name defined in the scaling policy in the configuration file.
+  * $date: The date the metric was collected (ISO 8601 with 3 positions after the decimal point)
+
+### Scaling Policies
+Dynamite makes scaling decisions based on rules written in the configuration file. There are some features that avoid several problems when you do scaling:  
+In the configuration you define a scaling policy that can be referenced by a service as scale up or scale down policy. Basically you only specify what metric is of interest and what type of service is it from. Then you define a threshold.
+If the metric falls below (or exceeds) the threshold the policy is triggered. But instead of executing a scaling action a timer is started. If this timer is up and all incoming metric values are under resp. over the threshold then the scaling action is executed. If a metric value is read that doesn't fall below resp. exceeds the threshold then the timer is reset. This timer (attribute *period* in the configuration) avoids that single events can cause a lot of scaling actions.
+
+Another problem is that a scaling action can be executed right after it was already executed. It could occur that a service is under heavy load and a scaling action is executed (e.g. a webserver is spawned to handle more traffic). Before the service is really running or the effect of the additional service is visible the next scaling action is already executed. To avoid this scenario a cooldown period can be defined per scaling policy. That means that if a scaling action would be executed and is within the cooldown period (started when the last scaling action was issued) the scaling action is not taking place.
+
+### Port mapping
+An important thing to mention is how networking works with fleet on CoreOS. Unless you use something like [flannel](https://github.com/coreos/flannel) (virtual network) use need to use port mapping to expose ports from the docker containers to the host. This seems straight forward but is a bit cumbersome and dangerous in the case that nobody prevents you from starting two services that use the same ports. The only thing you'll notice is failed services.  
+To avoid this problem there is a simple trick: Set the instance name of a fleet service to the port number it uses. This way the service knows to what port to map to (access the service name with %i) and it is not possible to submit two services with the same port number of the same unit file to fleet. If a service uses multiple ports they have to be mapped sequentially by incrementing the base port number.  
+
+Example:
+```
+container: loadbalancer with port 80 as frontend port and 1936 as admin page port  
+  1. choose base port number: e.g. port 8080 (configuration file of dynamite, attribute: base_instance_prefix_number)
+  2. set number of ports: set to 2 (configuration file of dynamite, attribute: ports_per_instance)
+  3. The service has to map port 80 to port 8080 and port 1936 to 8081 (this needs to be done in the fleet unit file)
+```
+
+### Resilience
+Dynamite is designed to be resilient if run in a container. That means that dynamite saves its state into etcd and if it crashes it can continue when restarted. All you need to do is to run dynamite in a container that was started by a fleet service. Set the `Restart` property of the fleet service so that the container is restarted on failure. This way the scaling engine can continue working even if the host that runs the dynamite container crashes because it will be restarted on another node in the cluster.
+
 ## Configuration
 Create a configuration file for your application. A pretty self-explaining example can be found [here](https://github.com/icclab/dynamite/blob/master/dynamite/tests/TEST_CONFIG_FOLDER/config.yaml).  
 The configuration file (in [yaml](http://yaml.org/) format) consists of several sections:
@@ -145,18 +203,41 @@ Define a scale down policy for the service. Write the name of the scaling policy
         ScalingPolicy: apache_scale_down
 ```
 ### Scaling Policy Description
-
 #### Service type
-#### Metric
-#### Metric aggregated
-#### Comparative operator
-#### Threshold
-#### Threshold unit
-#### Period
-#### Period unit
-#### Cooldown period
-#### Cooldown period unit
+The type of the service to read the metrics from. 
 
+#### Metric
+The name of the metric the policy depends on. Dynamite will read these metrics from etcd and compare them with the threshold specified.
+
+#### Metric aggregated
+Defines if the metric is aggregated over all instances of the service (aggregated is true) or if each service instance writes its own metrics (aggregated is false).
+
+#### Comparative operator
+This operator defines how the comparision with the threshold should be made. The comparision statement is: 'actual value' (lt|gt) 'threshold value' where lt or gt are comparative operators for < and >.
+
+#### Threshold
+The threshold value when the rule should be triggered.
+
+#### Threshold unit
+The unit of the threshold value. No unit conversion is made. It exists just for description purposes and clarity for the reader.
+
+#### Period
+The amount of time the scaling policy should be triggered before generating a scaling action.
+
+#### Period unit
+The unit of the period time. This unit has effect how the number of the attribute *period* is handled. Valid units are:
+  * second
+  * minute
+  * hour
+
+#### Cooldown period
+The amount of time the scaling policy is in standby after triggering.
+
+#### Cooldown period unit
+The unit of the cooldown period time. This unit has effect how the number of the attribute *cooldown period* is handled. Valid units are:
+  * second
+  * minute
+  * hour
 
 #### Format
 ```
@@ -189,8 +270,47 @@ Define a scale down policy for the service. Write the name of the scaling policy
       cooldown_period_unit: minute
 ```
 
+## Install dynamite (Ubuntu 14.04)
+The instructions below describe how to install dynamite on a ubuntu system. However consider using the [docker image](https://registry.hub.docker.com/u/icclabcna/zurmo_dynamite/).
+```
+# install required packages
+apt-get update && apt-get install -yq python3 \
+	git \
+	curl \
+	python3-setuptools \
+	python3-pip \
+	libssl-dev \
+	libffi-dev
+
+# clone the repository
+git clone https://github.com/icclab/dynamite.git
+cd dynamite
+./setup.py install
+cd dist
+easy_install dynamite*.egg
+mkdir /etc/dynamite
+mkdir /var/log/dynamite
+```
+
+## Start dynamite
+The following command starts dynamite with all its arguments:
+```
+/usr/local/bin/dynamite 
+    --config_file /path/to/config.yaml 
+    --service_folder /path/to/fleet-services 
+    --etcd_endpoint 127.0.0.1:4001
+    --fleet_endpoint 127.0.0.1:49153
+```
+  Arguments:
+   * __config_file:__ Path to the dynamite (yaml) config file (default: /etc/dynamite/config.yaml)
+   * __service_folder:__ Path to the location of the service files (default: /etc/dynamite/service-files)
+   * __etcd_endpoint:__ etcd API endpoint (default: 127.0.0.1:4001)
+   * __fleet_endpoint:__ fleet API endpoint (default: 127.0.0.1:49153)
  
 ## Implementation Details
+### Overview
+![Dynamite in its components](https://raw.githubusercontent.com/icclab/dynamite/master/doc/DynamiteArchitecture.png)
+
 ### etcd paths
 Dynamite uses etcd to write the state of the application its configuration and the fleet unit files of all services to.   
 Everything written to etcd from dynamite is saved in the hidden folder `/_dynamite`.
