@@ -68,6 +68,7 @@ class DynamiteEXECUTOR(Process):
                     self._process_received_request(scaling_request)
                 except:
                     self._logger.exception("Unexpected exception in Executor component")
+                    pass
         finally:
             self._exit_flag.value = 1
 
