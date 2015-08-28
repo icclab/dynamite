@@ -39,6 +39,7 @@ class Dynamite:
 
     def __init__(self):
         self._logger = logging.getLogger("dynamite.Dynamite")
+        self._logger.setLevel(logging.INFO)
         self._scaling_engine_metrics_communication_queue = None
         self._exit_flag = Value('i', 0)
 
