@@ -119,6 +119,10 @@ class FleetServiceHandler(object):
                 raise FleetCommunicationError(
                     "Could not talk to fleet to check if {} exists".format(fleet_unit)
                 ) from httpError
+            except ConnectionError as connError:
+                raise FleetCommunicationError(
+                    "Could not talk to fleet to check if {} exists".format(fleet_unit)
+                ) from connError
 
     @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
     def get_state_of_unit_and_retry_on_error(self, fleet_unit):

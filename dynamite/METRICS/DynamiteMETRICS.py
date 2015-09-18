@@ -51,6 +51,7 @@ class DynamiteMETRICS(Process):
             self._logger = logging.getLogger(__name__)
             self._dynamite_config = self.configuration or DynamiteConfig(etcd_endpoint=self._etcd_endpoint)
             self._logger.info("Initialized DynamiteMETRICS with configuration %s", str(self))
+            self._logger.setLevel(logging.INFO)
             self._running = True
             self.etcdctl = self.etcdctl or self._init_etcdctl(self._etcd_endpoint)
             self._create_etcd_service_metric_information_instances(self._dynamite_config)

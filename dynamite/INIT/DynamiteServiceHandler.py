@@ -194,7 +194,8 @@ class DynamiteServiceHandler(object):
                                                             attached_services=None)
                             attached_services.append(attached_service)
                         else:
-                            raise ServiceAnnouncerFileNotFoundError("Error: <" + name_of_attached_service_unit_file + "> File was not found.")
+                            self._logger.error(name_of_attached_service_unit_file + "> File was not found.")
+                            #raise ServiceAnnouncerFileNotFoundError("Error: <" + name_of_attached_service_unit_file + "> File was not found.")
 
                 fleet_service = FleetService(service_name,
                                              path_to_unit_file,

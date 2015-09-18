@@ -2,6 +2,8 @@ __author__ = 'brnr'
 
 import requests
 import etcd
+import logging
+from dynamite.GENERAL.Retry import retry, retry_on_condition
 
 # Instance Variables
 etcdctl = None     # Is instance of ETCD class and used to communicate with etcd
@@ -32,7 +34,7 @@ def test_connection(etcd_client):
     except:
         return False
 
-
+@retry(etcd.EtcdException, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
 def create_etcdctl(etcd_endpoint):
 
     global etcd_base_url

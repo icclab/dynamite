@@ -3,12 +3,14 @@ __author__ = 'brnr'
 import os
 import yaml
 import json
+import logging
 
 from intervaltree import Interval, IntervalTree
 from dynamite.GENERAL.DynamiteExceptions import OverlappingPortRangeError
 from dynamite.GENERAL.DynamiteExceptions import ServiceDependencyNotExistError
 from dynamite.GENERAL import ETCDCTL
 from dynamite.GENERAL import ServiceEndpoint
+from dynamite.GENERAL.Retry import retry, retry_on_condition
 
 class DynamiteConfig(object):
     # Instance Variables
@@ -21,12 +23,13 @@ class DynamiteConfig(object):
     IntervalTree = None         # Should not matter after initialization!
 
     dynamite_yaml_config = None
+    _logger = logging.getLogger("dynamite.DynamiteConfig")
 
     # Arguments:    arg_config_path: Path to the Dynamite YAML config file
     #               arg_service_folder (Optional):  List of paths containing service-files.
     #                                               Can also/additionally be defined in the dynamite yaml configuration file
     def __init__(self, arg_config_path=None, arg_service_folder_list=None, etcd_endpoint=None, fleet_endpoint=None):
-
+        
         if arg_config_path is not None:
             self.init_from_file(arg_config_path, arg_service_folder_list, fleet_endpoint)
 
@@ -39,9 +42,9 @@ class DynamiteConfig(object):
             raise FileNotFoundError("--config-file: " + arg_config_path + " --> File at given config-path does not exist")
         else:
             dynamite_yaml_config = self.load_config_file(arg_config_path)
-
         self.set_instance_variables(dynamite_yaml_config, arg_service_folder_list, fleet_endpoint)
 
+    
     def init_from_etcd(self, etcd_endpoint):
 
         etcdctl = ETCDCTL.create_etcdctl(etcd_endpoint)
@@ -148,11 +151,13 @@ class DynamiteConfig(object):
     class ServiceFilesStruct(object):
         # Instance Variables
         PathList = None
+        _logger = logging.getLogger("dynamite.DynamiteConfig")
 
         def init_pathlist(self, PathList):
             checked_list_of_abs_paths = []
 
             for service_file_folder in PathList:
+                self._logger.info("dir: " + service_file_folder)
                 if not os.path.isdir(service_file_folder):
                     raise NotADirectoryError("Error reading Dynamite Configuration (ServiceFiles-->PathList-->" + service_file_folder + " --> Is not a directory")
                 if os.path.isabs(service_file_folder):

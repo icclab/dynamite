@@ -7,6 +7,7 @@ from dynamite.GENERAL.FleetServiceHandler import FleetCommunicationError, FleetS
 
 from dynamite.EXECUTOR.DynamiteScalingResponse import DynamiteScalingResponse
 from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
+from dynamite.GENERAL.Retry import retry, retry_on_condition
 
 import logging
 import atexit
@@ -71,7 +72,12 @@ class DynamiteEXECUTOR(Process):
                     pass
         finally:
             self._exit_flag.value = 1
-
+    
+    @retry(FleetSubmissionError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetStartError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetDestroyError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetStartError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
     def _process_received_request(self, scaling_request, fail_count=0):
         scaling_success = False
         created_service_instance = None
@@ -85,25 +91,20 @@ class DynamiteEXECUTOR(Process):
                 service_instance_name = scaling_request.service_instance_name
                 self._dynamite_service_handler.remove_fleet_service_instance(service_name, service_instance_name)
             scaling_success = True
-        except FleetSubmissionError:
+        except FleetSubmissionError as fse:
             self._logger.exception("Submitting fleet file failed!")
-            retry_success = self._retry_processing_request(scaling_request, fail_count)
-            if retry_success:
-                return
+            raise FleetSubmissionError from fse
         except FleetStartError:
             self._logger.exception("Starting fleet service failed!")
             if created_service_instance is not None:
                 self._unload_unit(created_service_instance)
-            retry_success = self._retry_processing_request(scaling_request, fail_count)
-            if retry_success:
-                return
-        except FleetDestroyError:
+            raise FleetStartError from fse
+        except FleetDestroyError as fde:
             self._logger.exception("Destroying fleet service failed!")
-            retry_success = self._retry_processing_request(scaling_request, fail_count)
-            if retry_success:
-                return
-        except FleetCommunicationError:
+            raise FleetDestroyError from fde
+        except FleetCommunicationError as fce:
             self._logger.exception("Communication with fleet failed!")
+            raise FleetCommunicationError from fce
 
         scaling_response = DynamiteScalingResponse.from_scaling_request(scaling_request, scaling_success)
         self._scaling_response_sender.send_response(scaling_response)
