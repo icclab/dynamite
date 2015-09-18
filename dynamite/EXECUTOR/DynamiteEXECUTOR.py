@@ -93,18 +93,18 @@ class DynamiteEXECUTOR(Process):
             scaling_success = True
         except FleetSubmissionError as fse:
             self._logger.exception("Submitting fleet file failed!")
-            raise FleetSubmissionError from fse
-        except FleetStartError:
+            raise FleetSubmissionError("Submission error on unit: {}" + service_name) from fse
+        except FleetStartError as fse:
             self._logger.exception("Starting fleet service failed!")
             if created_service_instance is not None:
                 self._unload_unit(created_service_instance)
-            raise FleetStartError from fse
+            raise FleetStartError ("Unit start error on unit: {}" + service_name) from fse
         except FleetDestroyError as fde:
             self._logger.exception("Destroying fleet service failed!")
-            raise FleetDestroyError from fde
+            raise FleetDestroyError ("Failed destroying unit: {}" + service_name) from fde
         except FleetCommunicationError as fce:
             self._logger.exception("Communication with fleet failed!")
-            raise FleetCommunicationError from fce
+            raise FleetCommunicationError("Fleet communication error working on unit: {}" + service_name) from fce
 
         scaling_response = DynamiteScalingResponse.from_scaling_request(scaling_request, scaling_success)
         self._scaling_response_sender.send_response(scaling_response)
