@@ -73,11 +73,11 @@ class DynamiteEXECUTOR(Process):
         finally:
             self._exit_flag.value = 1
     
-    @retry(FleetSubmissionError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetStartError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetDestroyError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetStartError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetSubmissionError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetStartError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetDestroyError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetCommunicationError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetStartError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
     def _process_received_request(self, scaling_request, fail_count=0):
         scaling_success = False
         created_service_instance = None
@@ -92,19 +92,21 @@ class DynamiteEXECUTOR(Process):
                 self._dynamite_service_handler.remove_fleet_service_instance(service_name, service_instance_name)
             scaling_success = True
         except FleetSubmissionError as fse:
-            self._logger.exception("Submitting fleet file failed!")
+            self._logger.error("Submitting fleet file failed!")
             raise FleetSubmissionError("Submission error on unit: {}" + service_name) from fse
         except FleetStartError as fse:
-            self._logger.exception("Starting fleet service failed!")
+            self._logger.error("Starting fleet service failed!")
             if created_service_instance is not None:
                 self._unload_unit(created_service_instance)
             raise FleetStartError ("Unit start error on unit: {}" + service_name) from fse
         except FleetDestroyError as fde:
-            self._logger.exception("Destroying fleet service failed!")
+            self._logger.error("Destroying fleet service failed!")
             raise FleetDestroyError ("Failed destroying unit: {}" + service_name) from fde
         except FleetCommunicationError as fce:
-            self._logger.exception("Communication with fleet failed!")
+            self._logger.error("Communication with fleet failed!")
             raise FleetCommunicationError("Fleet communication error working on unit: {}" + service_name) from fce
+        except:
+            self._logger.exception()
 
         scaling_response = DynamiteScalingResponse.from_scaling_request(scaling_request, scaling_success)
         self._scaling_response_sender.send_response(scaling_response)
