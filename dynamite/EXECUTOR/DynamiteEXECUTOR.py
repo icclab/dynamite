@@ -7,7 +7,7 @@ from dynamite.GENERAL.FleetServiceHandler import FleetCommunicationError, FleetS
 
 from dynamite.EXECUTOR.DynamiteScalingResponse import DynamiteScalingResponse
 from dynamite.EXECUTOR.DynamiteScalingCommand import DynamiteScalingCommand
-from dynamite.GENERAL.Retry import retry, retry_on_condition
+from dynamite.GENERAL.Retry import retry
 
 import logging
 import atexit

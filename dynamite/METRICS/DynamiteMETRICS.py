@@ -57,8 +57,12 @@ class DynamiteMETRICS(Process):
             self._create_etcd_service_metric_information_instances(self._dynamite_config)
 
             while self._running:
-                self._get_metrics_from_etcd()
-                time.sleep(1)
+                try:
+                    self._get_metrics_from_etcd()
+                    time.sleep(1)
+                except: 
+                    self._logger.exception()
+                    pass
                 if self._exit_flag.value == 1:
                     self._running = False
         finally:
