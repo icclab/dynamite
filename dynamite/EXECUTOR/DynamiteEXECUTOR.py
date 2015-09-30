@@ -106,7 +106,7 @@ class DynamiteEXECUTOR(Process):
             self._logger.error("Communication with fleet failed!")
             raise FleetCommunicationError("Fleet communication error working on unit: {}" + service_name) from fce
         except:
-            self._logger.exception()
+            self._logger.exception("Unexpected error")
 
         scaling_response = DynamiteScalingResponse.from_scaling_request(scaling_request, scaling_success)
         self._scaling_response_sender.send_response(scaling_response)

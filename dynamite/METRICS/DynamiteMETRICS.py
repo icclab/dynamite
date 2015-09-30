@@ -61,7 +61,7 @@ class DynamiteMETRICS(Process):
                     self._get_metrics_from_etcd()
                     time.sleep(1)
                 except: 
-                    self._logger.exception()
+                    self._logger.exception("Unexpected error")
                     pass
                 if self._exit_flag.value == 1:
                     self._running = False
