@@ -73,11 +73,7 @@ class DynamiteEXECUTOR(Process):
         finally:
             self._exit_flag.value = 1
     
-    @retry(FleetSubmissionError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetStartError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetDestroyError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetCommunicationError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetStartError, tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry((FleetSubmissionError, FleetStartError, FleetDestroyError, FleetCommunicationError, FleetStartError), tries=7, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
     def _process_received_request(self, scaling_request, fail_count=0):
         scaling_success = False
         created_service_instance = None
@@ -126,10 +122,13 @@ class DynamiteEXECUTOR(Process):
         else:
             self._logger.error("Retried {} times, giving up!".format(self.RETRY_FAILED_REQUESTS_TIMES))
             return False
-
+    
+    @retry(Exception, tries=20, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
     def _create_dynamite_config(self, etcd_endpoint):
         self._dynamite_config = DynamiteConfig(etcd_endpoint=etcd_endpoint)
-
+    
+    
+    @retry(Exception, tries=20, delay=5, backoff=1.5, logger=logging.getLogger(__name__))
     def _create_dynamite_service_handler(self, dynamite_config, etcd_endpoint):
         self._dynamite_service_handler = DynamiteServiceHandler(dynamite_config=dynamite_config,
                                                                etcd_endpoint=etcd_endpoint)
