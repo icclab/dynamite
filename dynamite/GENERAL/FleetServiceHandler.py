@@ -172,8 +172,8 @@ class FleetServiceHandler(object):
         else:
             return None
 
-    @retry_on_condition(tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__), condition_fail_description="Service not yet destroyed")
-    @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry_on_condition(tries=7, delay=2, backoff=1.5, logger=logging.getLogger(__name__), condition_fail_description="Service not yet destroyed")
+    @retry(FleetCommunicationError, tries=7, delay=2, backoff=1.5, logger=logging.getLogger(__name__))
     def _check_if_service_destroyed_and_retry_if_not(self, service_instance_name):
         request_url = self.fleet_units_url + service_instance_name
         response = requests.get(request_url)

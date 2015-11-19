@@ -79,5 +79,5 @@ class ScalingPolicyInstance:
             self.instance_uuid,
             repr(self.state),
             repr(self.threshold_period),
-            repr(self.policy)
+            self.policy.policy_name
         )
