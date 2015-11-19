@@ -77,6 +77,8 @@ class DynamiteEXECUTOR(Process):
     def _process_received_request(self, scaling_request, fail_count=0):
         scaling_success = False
         created_service_instance = None
+        
+        self._logger.info("Received request: %s", scaling_request)
 
         try:
             if scaling_request.command == DynamiteScalingCommand.SCALE_UP:

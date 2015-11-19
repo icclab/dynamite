@@ -105,8 +105,8 @@ class FleetServiceHandler(object):
         else:
             return None
 
-    @retry(FleetSubmissionError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
-    @retry(FleetCommunicationError, tries=7, delay=1, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetSubmissionError, tries=7, delay=2, backoff=1.5, logger=logging.getLogger(__name__))
+    @retry(FleetCommunicationError, tries=7, delay=2, backoff=1.5, logger=logging.getLogger(__name__))
     def _check_if_unit_exists_and_retry_if_not(self, fleet_unit):
         request_url = self.fleet_units_url + fleet_unit
         response = requests.get(request_url)
